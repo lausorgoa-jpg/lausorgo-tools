@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lausorgo Farmer Database</title>
+<style>
+  :root {
+    --green: #1B5E20; --leaf: #4C993F; --navy: #10285A; --amber: #C47814;
+    --bg: #F7FAF7; --ink: #222; --gray: #6B7280; --border: #E5E7EB;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 18px 14px 60px; }
+  header.top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  header.top h1 { font-size:19px; margin:0; color: var(--green); }
+  header.top p { font-size:12px; color: var(--gray); margin:2px 0 0; }
+  #saveState { font-size:12px; color: var(--gray); white-space:nowrap; }
+  #saveState.saved { color: var(--green); } #saveState.error { color:#dc2626; }
+  .banner { background:#E7EAF3; color:#10285A; font-size:12px; padding:8px 12px; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .tabs { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:16px; }
+  .tab-btn { flex-shrink:0; display:flex; align-items:center; gap:6px; padding:9px 14px; border-radius:12px; font-size:14px; font-weight:500; border:1px solid var(--border); background:white; color:#555; cursor:pointer; white-space:nowrap; }
+  .tab-btn.active { background: var(--green); color:white; border-color: var(--green); }
+  .card { background:white; border-radius:16px; border:1px solid #f0f0f0; padding:18px; box-shadow:0 1px 2px rgba(0,0,0,0.03); margin-bottom:16px; }
+  .card h3 { font-size:14px; font-weight:600; color:#374151; margin:0 0 12px; }
+  .stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
+  @media (min-width:600px){ .stat-grid{ grid-template-columns:repeat(4,1fr);} }
+  .stat-card { background:white; border-radius:14px; border:1px solid #f0f0f0; padding:12px; display:flex; gap:10px; align-items:flex-start; }
+  .stat-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;}
+  .stat-label { font-size:11px; color: var(--gray); }
+  .stat-value { font-size:18px; font-weight:600; color:#333; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:500; }
+  .field { margin-bottom:10px; }
+  .field label { display:block; font-size:11px; font-weight:500; color: var(--gray); margin-bottom:4px; }
+  .field input, .field select { width:100%; padding:9px 10px; border-radius:10px; border:1px solid var(--border); font-size:14px; background:white; color: var(--ink); }
+  .field input:focus, .field select:focus { outline:2px solid var(--leaf); border-color:transparent; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  @media (max-width:480px){ .grid2,.grid3{ grid-template-columns:1fr 1fr; } }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 16px; border-radius:10px; font-size:14px; font-weight:600; border:none; cursor:pointer; color:white; }
+  .btn.block { width:100%; }
+  .btn-green{background:var(--green);} .btn-leaf{background:var(--leaf);} .btn-navy{background:var(--navy);}
+  .list-item { border:1px solid #f0f0f0; border-radius:12px; padding:11px 12px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px; }
+  .list-item .meta { font-size:12px; color: var(--gray); margin-top:4px; display:flex; flex-wrap:wrap; gap:4px 12px; }
+  .del-btn { background:none; border:none; color:#d1d5db; cursor:pointer; font-size:16px; padding:2px; flex-shrink:0; }
+  .del-btn:hover { color:#ef4444; }
+  .empty { text-align:center; color:#9ca3af; padding:34px 10px; font-size:13px; }
+  .checkbox-row { display:flex; flex-wrap:wrap; gap:8px 16px; padding:8px 0; }
+  .checkbox-row label { display:flex; align-items:center; gap:6px; font-size:13px; color:#333; font-weight:normal; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Lausorgo Farmer Database</h1>
+      <p>Building a farmer database across Northeast Nigeria</p>
+    </div>
+    <div id="saveState"></div>
+  </header>
+
+  <div class="banner">
+    <span id="backendModeText">\u{1F465} Connecting\u2026</span>
+    <span style="display:flex;align-items:center;gap:6px;">
+      Logging as: <input id="actorName" placeholder="Your name" style="padding:4px 8px;border-radius:6px;border:1px solid #c7d0e6;font-size:12px;width:120px;"/>
+    </span>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "lausorgo-farmer-database";
+const SHARED = true;
+// IMPORTANT: this should be a SEPARATE Google Sheet from the Match Tracker's, since this is a different dataset.
+// Follow the same Apps Script setup steps, then paste your new Web App URL below.
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbykfey2oP5GzftrtNmlOv7cWoFbdduNNxy8A-zK_A28_A869xn4cXhrXaKMpQjEXPRS/exec";
+
+const NE_STATES = ["Borno","Yobe","Adamawa","Taraba","Gombe","Bauchi"];
+const PRODUCE_OPTIONS = ["Maize","Sorghum","Millet","Rice","Groundnut","Cowpea","Soybean","Sesame","Tomatoes","Pepper","Onions","Other"];
+const UNIT_OPTIONS = ["Bag (100kg)","Bag (50kg)","Kg","Basket","Crate","Ton"];
+const AGE_BRACKETS = ["Under 18","18-25","26-35","36-45","46-60","Over 60"];
+const FARMER_TYPES = ["Smallholder","Cooperative member","Commercial farmer"];
+
+const RESTRICTED_PIN = "2026"; // change this — soft deterrent only, visible to anyone editing the file
+let unlockedExport = false;
+
+let data = { farmers: [], activityLog: [] };
+let currentTab = "farmers";
+let showForm = false;
+let backendMode = "unknown";
+let currentActor = "";
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const naira = (n) => "\u20a6" + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const esc = (s) => (s || "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function logActivity(action, details) {
+  if (!data.activityLog) data.activityLog = [];
+  data.activityLog.push({ id: uid(), time: new Date().toISOString(), actor: currentActor.trim() || "Unnamed team member", action, details });
+  if (data.activityLog.length > 500) data.activityLog = data.activityLog.slice(-500);
+}
+
+function mergeDefaults(parsed) { return { farmers: [], activityLog: [], ...parsed }; }
+
+async function fetchFromSheets() {
+  const res = await fetch(BACKEND_URL, { method: "GET" });
+  if (!res.ok) throw new Error("Sheets backend returned " + res.status);
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
+async function saveToSheets(payload) {
+  const res = await fetch(BACKEND_URL, { method: "POST", body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error("Sheets backend returned " + res.status);
+  return true;
+}
+function updateBackendBanner() {
+  const el = document.getElementById("backendModeText");
+  if (!el) return;
+  if (backendMode === "sheets") el.textContent = "\u2705 Synced via shared Google Sheet — works from any copy of this file, on any device.";
+  else if (backendMode === "claude") el.textContent = "\u26A0\uFE0F Synced via Claude only — everyone must open the same Claude link for this to sync.";
+  else el.textContent = "\u274C Not syncing — check your BACKEND_URL setup or internet connection.";
+}
+
+async function loadData() {
+  try {
+    if (BACKEND_URL.startsWith("PASTE_")) throw new Error("no backend configured yet");
+    const parsed = await fetchFromSheets();
+    data = mergeDefaults(parsed);
+    backendMode = "sheets";
+  } catch (e) {
+    try {
+      const res = await window.storage.get(STORAGE_KEY, SHARED);
+      if (res && res.value) data = mergeDefaults(JSON.parse(res.value));
+      backendMode = "claude";
+    } catch (e2) { backendMode = "none"; }
+  }
+  updateBackendBanner();
+  render();
+}
+async function refreshFromServer() {
+  try {
+    if (backendMode === "sheets") { data = mergeDefaults(await fetchFromSheets()); render(); }
+    else if (backendMode === "claude") {
+      const res = await window.storage.get(STORAGE_KEY, SHARED);
+      if (res && res.value) { data = mergeDefaults(JSON.parse(res.value)); render(); }
+    }
+  } catch (e) {}
+}
+async function persist() {
+  const el = document.getElementById("saveState");
+  el.textContent = "Saving…"; el.className = "";
+  try {
+    if (backendMode === "sheets") {
+      await saveToSheets(data);
+      el.textContent = "\u2713 Saved to shared Google Sheet"; el.className = "saved";
+    } else {
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(data), SHARED);
+      el.textContent = result ? "\u2713 Saved (Claude storage)" : "Save failed";
+      el.className = result ? "saved" : "error";
+      backendMode = result ? "claude" : backendMode;
+    }
+  } catch (e) {
+    try {
+      await window.storage.set(STORAGE_KEY, JSON.stringify(data), SHARED);
+      el.textContent = "\u26A0 Saved locally to Claude only"; el.className = "error";
+    } catch (e2) { el.textContent = "Save failed — check connection"; el.className = "error"; }
+  }
+  setTimeout(() => { el.textContent = ""; }, 2600);
+}
+setInterval(() => {
+  const activeTag = document.activeElement ? document.activeElement.tagName : "";
+  const isEditing = activeTag === "INPUT" || activeTag === "SELECT" || activeTag === "TEXTAREA";
+  if (!showForm && !isEditing) refreshFromServer();
+}, 15000);
+
+function selectOptions(list, selected) {
+  return list.map(o => `<option value="${esc(o)}" ${o===selected?"selected":""}>${esc(o)}</option>`).join("");
+}
+
+const TABS = [
+  { id: "dashboard", label: "Dashboard", icon: "\u{1F4CA}" },
+  { id: "farmers", label: "Farmers", icon: "\u{1F331}" },
+  { id: "activity", label: "Activity Log", icon: "\u{1F553}" },
+];
+
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = TABS.map(t => `<button class="tab-btn ${currentTab===t.id?'active':''}" data-tab="${t.id}">${t.icon} ${t.label}</button>`).join("");
+  document.querySelectorAll(".tab-btn").forEach(btn => { btn.onclick = () => { currentTab = btn.dataset.tab; render(); }; });
+}
+
+function render() {
+  renderTabs();
+  const actorInput = document.getElementById("actorName");
+  if (actorInput) {
+    if (document.activeElement !== actorInput) actorInput.value = currentActor;
+    actorInput.oninput = () => { currentActor = actorInput.value; };
+  }
+  const content = document.getElementById("content");
+  if (currentTab === "dashboard") content.innerHTML = renderDashboard();
+  else if (currentTab === "farmers") content.innerHTML = renderFarmersTab();
+  else if (currentTab === "activity") content.innerHTML = renderActivityTab();
+  attachHandlers();
+}
+
+// ---------- DASHBOARD ----------
+function renderDashboard() {
+  const total = data.farmers.length;
+  const byState = {};
+  data.farmers.forEach(f => { byState[f.state || "Unspecified"] = (byState[f.state || "Unspecified"]||0)+1; });
+  const byGender = {};
+  data.farmers.forEach(f => { byGender[f.gender || "Unspecified"] = (byGender[f.gender || "Unspecified"]||0)+1; });
+  const totalHectares = data.farmers.reduce((s,f)=>s+(Number(f.hectares)||0),0);
+
+  return `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-icon" style="background:#1B5E201A;">\u{1F468}\u200D\u{1F33E}</div><div><div class="stat-label">Farmers registered</div><div class="stat-value">${total}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:#10285A1A;">\u{1F5FA}\uFE0F</div><div><div class="stat-label">States covered</div><div class="stat-value">${Object.keys(byState).length}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:#4C993F1A;">\u{1F33E}</div><div><div class="stat-label">Total hectares (reported)</div><div class="stat-value">${totalHectares.toFixed(1)}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:#C478141A;">\u2640\uFE0F</div><div><div class="stat-label">Women farmers</div><div class="stat-value">${byGender["Female"]||0}</div></div></div>
+    </div>
+    <div class="card">
+      <h3>Farmers by state</h3>
+      ${Object.keys(byState).length===0 ? `<p class="empty" style="padding:10px 0;">Add farmers to see this breakdown.</p>` :
+        Object.entries(byState).sort((a,b)=>b[1]-a[1]).map(([s,c]) => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f7f7f7;font-size:14px;">
+            <span>${esc(s)}</span><span style="font-weight:600;">${c}</span>
+          </div>`).join("")
+      }
+    </div>
+  `;
+}
+
+// ---------- FARMERS TAB ----------
+function renderFarmersTab() {
+  const items = [...data.farmers].reverse();
+  return `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      ${!showForm ? `<button class="btn btn-leaf" id="openForm">+ Add farmer</button>` : ""}
+      <button class="btn" style="background:#374151;" id="exportBtn">\u{1F512} \u{1F4E5} Download farmer database (CSV)</button>
+    </div>
+    ${showForm ? renderForm() : ""}
+    <div class="card">
+      <h3>\u{1F331} Registered farmers (${data.farmers.length})</h3>
+      ${items.length === 0 ? `<div class="empty">No farmers registered yet.</div>` :
+        items.map(f => `
+          <div class="list-item">
+            <div>
+              <div><b>${esc(f.name)}</b> ${f.gender ? `<span class="badge" style="background:#F3F4F6;color:#555;">${esc(f.gender)}</span>` : ""} ${f.ageBracket ? `<span class="badge" style="background:#F3F4F6;color:#555;">${esc(f.ageBracket)}</span>` : ""}</div>
+              <div class="meta">
+                ${f.phone ? `<span>\u{1F4DE} ${esc(f.phone)}</span>` : ""}
+                ${(f.community||f.lga||f.state) ? `<span>\u{1F3D8}\uFE0F ${[f.community,f.lga,f.state].filter(Boolean).map(esc).join(", ")}</span>` : ""}
+                ${f.hectares ? `<span>\u{1F33E} ${esc(f.hectares)} ha</span>` : ""}
+                ${f.yearsFarming ? `<span>\u{1F4C6} ${esc(f.yearsFarming)} yrs farming</span>` : ""}
+                ${f.farmerType ? `<span>${esc(f.farmerType)}</span>` : ""}
+              </div>
+              <div class="meta">
+                ${f.produce ? `<span>\u{1F33E} Grows: ${esc(f.produce)}</span>` : ""}
+                ${f.quantity ? `<span>\u{1F4E6} ${esc(f.quantity)} ${esc(f.unit)}</span>` : ""}
+                ${f.pricePerUnit ? `<span>${naira(f.pricePerUnit)}/unit</span>` : ""}
+              </div>
+              <div class="meta">
+                ${f.livestock ? `<span>\u{1F404} Livestock: ${esc(f.livestock)}</span>` : ""}
+                ${f.storageAccess ? `<span>\u{1F3ED} Storage: ${esc(f.storageAccess)}</span>` : ""}
+                ${f.postHarvestLoss ? `<span>\u26A0\uFE0F Est. loss: ${esc(f.postHarvestLoss)}%</span>` : ""}
+                ${f.coopMember ? `<span>\u{1F91D} Coop: ${esc(f.coopMember)}${f.coopName ? " ("+esc(f.coopName)+")" : ""}</span>` : ""}
+              </div>
+            </div>
+            <button class="del-btn" data-del="${f.id}">\u2715</button>
+          </div>
+        `).join("")
+      }
+    </div>
+  `;
+}
+
+function renderForm() {
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;">Add a farmer</h3>
+      <button class="del-btn" id="closeForm" style="font-size:18px;">\u2715</button>
+    </div>
+
+    <div class="grid2">
+      <div class="field"><label>Full name</label><input id="f_name" placeholder="e.g. Musa Ibrahim"/></div>
+      <div class="field"><label>Phone</label><input id="f_phone" placeholder="08…"/></div>
+      <div class="field"><label>Gender</label><select id="f_gender"><option value="">Select…</option><option>Male</option><option>Female</option></select></div>
+      <div class="field"><label>Age bracket</label><select id="f_age">${selectOptions(AGE_BRACKETS)}</select></div>
+    </div>
+
+    <div class="grid3">
+      <div class="field"><label>State</label><select id="f_state">${selectOptions(NE_STATES, "Gombe")}</select></div>
+      <div class="field"><label>LGA</label><input id="f_lga" value="Billiri"/></div>
+      <div class="field"><label>Community</label><input id="f_community" placeholder="e.g. Lakwene"/></div>
+    </div>
+
+    <div class="grid3">
+      <div class="field"><label>Years farming</label><input id="f_years" type="number" placeholder="e.g. 10"/></div>
+      <div class="field"><label>Farmer type</label><select id="f_type">${selectOptions(FARMER_TYPES)}</select></div>
+      <div class="field"><label>Hectares of land owned</label><input id="f_hectares" type="number" step="0.1" placeholder="e.g. 2.5"/></div>
+    </div>
+
+    <div class="field"><label>Crops/produce grown (comma-separated if multiple)</label><input id="f_produce" placeholder="e.g. Maize, Groundnut, Cowpea"/></div>
+
+    <div class="grid3">
+      <div class="field"><label>Quantity currently available</label><input id="f_quantity" type="number" placeholder="0"/></div>
+      <div class="field"><label>Unit</label><select id="f_unit">${selectOptions(UNIT_OPTIONS)}</select></div>
+      <div class="field"><label>Asking price / unit (\u20a6)</label><input id="f_price" type="number" placeholder="0"/></div>
+    </div>
+
+    <div class="grid3">
+      <div class="field"><label>Livestock owned</label><input id="f_livestock" placeholder="e.g. Goats, Poultry (or leave blank)"/></div>
+      <div class="field"><label>Access to storage?</label><select id="f_storage"><option value="">Select…</option><option>Yes</option><option>No</option></select></div>
+      <div class="field"><label>Est. post-harvest loss (%)</label><input id="f_loss" type="number" placeholder="e.g. 20"/></div>
+    </div>
+
+    <div class="grid2">
+      <div class="field"><label>Cooperative/association member?</label><select id="f_coop"><option value="">Select…</option><option>Yes</option><option>No</option></select></div>
+      <div class="field"><label>Cooperative name (if yes)</label><input id="f_coopname" placeholder="e.g. AFAN Gombe"/></div>
+    </div>
+
+    <div class="field"><label>Specific location / landmark</label>
+      <div style="display:flex;gap:6px;">
+        <input id="f_location" placeholder="e.g. near Lakwene market" style="flex:1;"/>
+        <button type="button" class="btn btn-leaf" id="f_useLoc" style="padding:9px 12px;font-size:12px;white-space:nowrap;">\u{1F4CD} Use my location</button>
+      </div>
+      <div id="f_locStatus" style="font-size:11px;color:#9ca3af;margin-top:3px;"></div>
+      <input type="hidden" id="f_lat"/><input type="hidden" id="f_lng"/>
+    </div>
+
+    <button class="btn btn-green block" id="submitFarmer">+ Add farmer</button>
+  </div>`;
+}
+
+function attachLocationCapture() {
+  const btn = document.getElementById("f_useLoc");
+  if (!btn) return;
+  btn.onclick = () => {
+    const status = document.getElementById("f_locStatus");
+    if (!navigator.geolocation) { status.textContent = "Location access not supported — type it in above instead."; return; }
+    status.textContent = "Getting location…";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        document.getElementById("f_lat").value = pos.coords.latitude;
+        document.getElementById("f_lng").value = pos.coords.longitude;
+        status.textContent = "\u2713 Location captured (" + pos.coords.latitude.toFixed(4) + ", " + pos.coords.longitude.toFixed(4) + ")";
+      },
+      (err) => { status.textContent = "Couldn't get location (" + (err.message||"permission denied") + ") — type it in above instead."; },
+      { timeout: 8000 }
+    );
+  };
+}
+
+// ---------- ACTIVITY LOG ----------
+function renderActivityTab() {
+  const log = [...(data.activityLog||[])].reverse();
+  return `
+  <div class="card">
+    <h3>\u{1F553} Activity log</h3>
+    ${log.length===0 ? `<div class="empty">No activity yet.</div>` :
+      `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr><th style="text-align:left;font-size:11px;color:#9ca3af;padding:6px 4px;border-bottom:1px solid #f0f0f0;">When</th><th style="text-align:left;font-size:11px;color:#9ca3af;padding:6px 4px;border-bottom:1px solid #f0f0f0;">Who</th><th style="text-align:left;font-size:11px;color:#9ca3af;padding:6px 4px;border-bottom:1px solid #f0f0f0;">Action</th><th style="text-align:left;font-size:11px;color:#9ca3af;padding:6px 4px;border-bottom:1px solid #f0f0f0;">Details</th></tr></thead>
+        <tbody>${log.map(a=>`<tr><td style="padding:8px 4px;border-bottom:1px solid #f7f7f7;">${new Date(a.time).toLocaleString()}</td><td style="padding:8px 4px;border-bottom:1px solid #f7f7f7;">${esc(a.actor)}</td><td style="padding:8px 4px;border-bottom:1px solid #f7f7f7;">${esc(a.action)}</td><td style="padding:8px 4px;border-bottom:1px solid #f7f7f7;">${esc(a.details)}</td></tr>`).join("")}</tbody>
+      </table></div>`
+    }
+  </div>`;
+}
+
+// ---------- CSV EXPORT ----------
+function toCSV(rows, columns) {
+  const escCsv = (v) => { const s=(v===null||v===undefined)?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const header = columns.map(c=>escCsv(c.label)).join(",");
+  const body = rows.map(r=>columns.map(c=>escCsv(typeof c.value==="function"?c.value(r):r[c.value])).join(",")).join("\n");
+  return header+"\n"+body;
+}
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+const FARMER_CSV_COLUMNS = [
+  {label:"Full Name", value:"name"}, {label:"Phone", value:"phone"}, {label:"Gender", value:"gender"}, {label:"Age Bracket", value:"ageBracket"},
+  {label:"State", value:"state"}, {label:"LGA", value:"lga"}, {label:"Community", value:"community"}, {label:"Specific Location", value:"location"},
+  {label:"Years Farming", value:"yearsFarming"}, {label:"Farmer Type", value:"farmerType"}, {label:"Hectares Owned", value:"hectares"},
+  {label:"Crops/Produce Grown", value:"produce"}, {label:"Quantity Available", value:"quantity"}, {label:"Unit", value:"unit"}, {label:"Asking Price/Unit", value:"pricePerUnit"},
+  {label:"Livestock Owned", value:"livestock"}, {label:"Storage Access", value:"storageAccess"}, {label:"Est. Post-Harvest Loss (%)", value:"postHarvestLoss"},
+  {label:"Cooperative Member", value:"coopMember"}, {label:"Cooperative Name", value:"coopName"},
+  {label:"Date Registered", value:(r)=>new Date(r.date).toLocaleDateString()}, {label:"Registered By", value:"registeredBy"},
+];
+
+// ---------- EVENT HANDLERS ----------
+function attachHandlers() {
+  const openForm = document.getElementById("openForm");
+  if (openForm) openForm.onclick = () => { showForm = true; render(); };
+  const closeForm = document.getElementById("closeForm");
+  if (closeForm) closeForm.onclick = () => { showForm = false; render(); };
+  attachLocationCapture();
+
+  const submitFarmer = document.getElementById("submitFarmer");
+  if (submitFarmer) submitFarmer.onclick = () => {
+    const name = document.getElementById("f_name").value.trim();
+    if (!name) return;
+    data.farmers.push({
+      id: uid(), name,
+      phone: document.getElementById("f_phone").value.trim(),
+      gender: document.getElementById("f_gender").value,
+      ageBracket: document.getElementById("f_age").value,
+      state: document.getElementById("f_state").value,
+      lga: document.getElementById("f_lga").value.trim(),
+      community: document.getElementById("f_community").value.trim(),
+      yearsFarming: document.getElementById("f_years").value,
+      farmerType: document.getElementById("f_type").value,
+      hectares: document.getElementById("f_hectares").value,
+      produce: document.getElementById("f_produce").value.trim(),
+      quantity: document.getElementById("f_quantity").value,
+      unit: document.getElementById("f_unit").value,
+      pricePerUnit: document.getElementById("f_price").value,
+      livestock: document.getElementById("f_livestock").value.trim(),
+      storageAccess: document.getElementById("f_storage").value,
+      postHarvestLoss: document.getElementById("f_loss").value,
+      coopMember: document.getElementById("f_coop").value,
+      coopName: document.getElementById("f_coopname").value.trim(),
+      location: document.getElementById("f_location").value.trim(),
+      lat: document.getElementById("f_lat").value || null,
+      lng: document.getElementById("f_lng").value || null,
+      registeredBy: currentActor.trim() || "Unnamed team member",
+      date: new Date().toISOString(),
+    });
+    logActivity("Added farmer", `${name} — ${document.getElementById("f_state").value}, ${document.getElementById("f_lga").value.trim()}`);
+    showForm = false; persist(); render();
+  };
+
+  document.querySelectorAll("[data-del]").forEach(btn => {
+    btn.onclick = () => {
+      const f = data.farmers.find(x => x.id === btn.dataset.del);
+      data.farmers = data.farmers.filter(x => x.id !== btn.dataset.del);
+      if (f) logActivity("Deleted farmer", f.name);
+      persist(); render();
+    };
+  });
+
+  const exportBtn = document.getElementById("exportBtn");
+  if (exportBtn) exportBtn.onclick = () => {
+    if (!unlockedExport) {
+      const val = window.prompt("This download is PIN-protected. Enter PIN:");
+      if (val === null) return;
+      if (val !== RESTRICTED_PIN) { alert("Incorrect PIN."); return; }
+      unlockedExport = true;
+      logActivity("Unlocked export", "Farmer database download");
+    }
+    const csv = toCSV(data.farmers, FARMER_CSV_COLUMNS);
+    downloadFile("lausorgo_farmer_database.csv", csv, "text/csv");
+    logActivity("Exported farmer database", `${data.farmers.length} farmer record(s) downloaded`);
+  };
+}
+
+loadData();
+</script>
+</body>
+</html>
