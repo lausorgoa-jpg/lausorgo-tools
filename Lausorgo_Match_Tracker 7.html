@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lausorgo Match Tracker</title>
+<style>
+  :root {
+    --green: #1B5E20;
+    --leaf: #4C993F;
+    --navy: #10285A;
+    --amber: #C47814;
+    --bg: #F7FAF7;
+    --ink: #222;
+    --gray: #6B7280;
+    --border: #E5E7EB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 18px 14px 60px; }
+  header.top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 18px; flex-wrap: wrap; gap: 8px;
+  }
+  header.top h1 { font-size: 19px; margin: 0; color: var(--green); }
+  header.top p { font-size: 12px; color: var(--gray); margin: 2px 0 0; }
+  #saveState { font-size: 12px; color: var(--gray); white-space: nowrap; }
+  #saveState.saved { color: var(--green); }
+  #saveState.error { color: #dc2626; }
+
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px; }
+  .tab-btn {
+    flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    border: 1px solid var(--border); background: white; color: #555; cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-btn.active { background: var(--green); color: white; border-color: var(--green); }
+
+  .card {
+    background: white; border-radius: 16px; border: 1px solid #f0f0f0;
+    padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); margin-bottom: 16px;
+  }
+  .card h3 { font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 12px; display:flex; align-items:center; gap:6px;}
+
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  @media (min-width: 600px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+  .stat-card {
+    background: white; border-radius: 14px; border: 1px solid #f0f0f0;
+    padding: 12px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .stat-icon { width: 34px; height: 34px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;}
+  .stat-label { font-size: 11px; color: var(--gray); }
+  .stat-value { font-size: 18px; font-weight: 600; color: #333; }
+
+  .badge { display:inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+
+  .field { margin-bottom: 10px; }
+  .field label { display:block; font-size: 11px; font-weight: 500; color: var(--gray); margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border);
+    font-size: 14px; background: white; color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--leaf); border-color: transparent; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 480px) { .grid2, .grid3 { grid-template-columns: 1fr 1fr; } }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content:center; gap: 6px;
+    padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    border: none; cursor: pointer; color: white;
+  }
+  .btn.block { width: 100%; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-green { background: var(--green); }
+  .btn-leaf { background: var(--leaf); }
+  .btn-navy { background: var(--navy); }
+
+  .list-item {
+    border: 1px solid #f0f0f0; border-radius: 12px; padding: 11px 12px;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;
+  }
+  .list-item .meta { font-size: 12px; color: var(--gray); margin-top: 4px; display:flex; flex-wrap:wrap; gap: 4px 12px; }
+  .del-btn { background:none; border:none; color:#d1d5db; cursor:pointer; font-size:16px; padding:2px; flex-shrink:0; }
+  .del-btn:hover { color: #ef4444; }
+
+  .empty { text-align:center; color:#9ca3af; padding: 34px 10px; font-size: 13px; }
+
+  table { width:100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align:left; font-size: 11px; color:#9ca3af; font-weight:500; padding: 6px 4px; border-bottom:1px solid #f0f0f0; }
+  td { padding: 8px 4px; border-bottom:1px solid #f7f7f7; white-space:nowrap; }
+  .tbl-wrap { overflow-x:auto; }
+
+  .commission-box { background:#E8F4E7; border-radius:10px; padding:10px; text-align:center; }
+  .commission-box .lbl { font-size:11px; color:var(--gray); }
+  .commission-box .val { font-size:18px; font-weight:700; color: var(--green); }
+
+  .warn { font-size:12px; color:#b45309; background:#fffbeb; border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .bar-label { width:90px; font-size:13px; color:#555; flex-shrink:0; }
+  .bar-track { flex:1; height:10px; background:#f0f0f0; border-radius:6px; overflow:hidden; }
+  .bar-fill { height:100%; background: var(--leaf); border-radius:6px; }
+  .bar-value { width:90px; text-align:right; font-size:13px; font-weight:500; flex-shrink:0; }
+
+  @media print {
+    header.top, .tabs, #saveState, .no-print, div[style*="background:#E7EAF3"] { display: none !important; }
+    body { background: white; }
+    .wrap { padding: 0; max-width: 100%; }
+    .card { box-shadow: none; border: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Lausorgo Match Tracker</h1>
+      <p>Match farmers to buyers and track your commission</p>
+    </div>
+    <div id="saveState"></div>
+  </header>
+
+  <div style="background:#E7EAF3;color:#10285A;font-size:12px;padding:8px 12px;border-radius:10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <span id="backendModeText">\u{1F465} Shared team data — connecting…</span>
+    <span style="display:flex;align-items:center;gap:6px;">
+      Logging as:
+      <input id="actorName" placeholder="Your name" style="padding:4px 8px;border-radius:6px;border:1px solid #c7d0e6;font-size:12px;width:120px;"/>
+    </span>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "lausorgo-match-tracker-data";
+const PRODUCE_OPTIONS = ["Maize","Sorghum","Groundnut","Cowpea","Tomatoes","Pepper","Onions","Other"];
+const UNIT_OPTIONS = ["Bag (100kg)","Bag (50kg)","Kg","Basket","Crate","Ton"];
+
+let data = { supply: [], demand: [], transactions: [], activityLog: [] };
+let currentTab = "dashboard";
+let showSupplyForm = false;
+let showDemandForm = false;
+let currentActor = "";
+
+function logActivity(action, details) {
+  if (!data.activityLog) data.activityLog = [];
+  data.activityLog.push({
+    id: uid(),
+    time: new Date().toISOString(),
+    actor: currentActor.trim() || "Unnamed team member",
+    action, details
+  });
+  if (data.activityLog.length > 500) data.activityLog = data.activityLog.slice(-500); // cap growth
+}
+
+const RESTRICTED_PIN = "2026"; // change this to your own PIN — anyone editing the file can see it, so treat it as a soft deterrent, not real security
+const RESTRICTED_TABS = ["report", "export"];
+let unlockedTabs = new Set();
+const uid = () => Math.random().toString(36).slice(2, 10);
+const naira = (n) => "\u20a6" + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const esc = (s) => (s || "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const SHARED = true; // shared across everyone who opens this tool
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzbP5UV6_ooYsOfXshIh49XVmOB6tjwOPACWMdBCXf-JUBw3JYsXCrrWW3_FIeixR6s/exec";
+let backendMode = "unknown"; // "sheets" | "claude" | "none"
+
+function mergeDefaults(parsed) {
+  return { supply: [], demand: [], transactions: [], activityLog: [], ...parsed };
+}
+
+async function fetchFromSheets() {
+  const res = await fetch(BACKEND_URL, { method: "GET" });
+  if (!res.ok) throw new Error("Sheets backend returned " + res.status);
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
+
+async function saveToSheets(payload) {
+  const res = await fetch(BACKEND_URL, { method: "POST", body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error("Sheets backend returned " + res.status);
+  return true;
+}
+
+function updateBackendBanner() {
+  const el = document.getElementById("backendModeText");
+  if (!el) return;
+  if (backendMode === "sheets") {
+    el.textContent = "\u2705 Synced via shared Google Sheet — works from any copy of this file, on any device.";
+  } else if (backendMode === "claude") {
+    el.textContent = "\u26A0\uFE0F Synced via Claude only — everyone must open the same Claude link for this to sync. (Google Sheets backend unreachable.)";
+  } else {
+    el.textContent = "\u274C Not syncing right now — check your internet connection.";
+  }
+}
+
+async function loadData() {
+  // Try the independent Google Sheets backend first — works regardless of how this file was opened.
+  try {
+    const parsed = await fetchFromSheets();
+    data = mergeDefaults(parsed);
+    backendMode = "sheets";
+  } catch (e) {
+    // Fall back to Claude's built-in storage (only works when opened as a Claude artifact).
+    try {
+      const res = await window.storage.get(STORAGE_KEY, SHARED);
+      if (res && res.value) {
+        data = mergeDefaults(JSON.parse(res.value));
+      }
+      backendMode = "claude";
+    } catch (e2) {
+      backendMode = "none";
+    }
+  }
+  updateBackendBanner();
+  render();
+}
+
+async function refreshFromServer() {
+  try {
+    if (backendMode === "sheets") {
+      const parsed = await fetchFromSheets();
+      data = mergeDefaults(parsed);
+      render();
+    } else if (backendMode === "claude") {
+      const res = await window.storage.get(STORAGE_KEY, SHARED);
+      if (res && res.value) {
+        data = mergeDefaults(JSON.parse(res.value));
+        render();
+      }
+    }
+  } catch (e) { /* ignore transient errors on background refresh */ }
+}
+
+async function persist() {
+  const el = document.getElementById("saveState");
+  el.textContent = "Saving…"; el.className = "";
+  try {
+    if (backendMode === "sheets") {
+      await saveToSheets(data);
+      el.textContent = "\u2713 Saved to shared Google Sheet";
+      el.className = "saved";
+    } else {
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(data), SHARED);
+      el.textContent = result ? "\u2713 Saved (Claude storage \u2014 open via the same link to sync)" : "Save failed";
+      el.className = result ? "saved" : "error";
+      backendMode = result ? "claude" : backendMode;
+    }
+  } catch (e) {
+    // If the Sheets backend suddenly fails mid-session, try Claude storage as a safety net.
+    try {
+      await window.storage.set(STORAGE_KEY, JSON.stringify(data), SHARED);
+      el.textContent = "\u26A0 Saved locally to Claude only \u2014 check internet connection";
+      el.className = "error";
+    } catch (e2) {
+      el.textContent = "Save failed — check connection";
+      el.className = "error";
+    }
+  }
+  setTimeout(() => { el.textContent = ""; }, 2600);
+}
+
+// Poll for teammates' changes every 15s, but only when not actively filling a form
+setInterval(() => {
+  const activeTag = document.activeElement ? document.activeElement.tagName : "";
+  const isEditing = activeTag === "INPUT" || activeTag === "SELECT" || activeTag === "TEXTAREA";
+  if (!showSupplyForm && !showDemandForm && currentTab !== "match" && !isEditing) {
+    refreshFromServer();
+  }
+}, 15000);
+
+function selectOptions(list, selected) {
+  return list.map(o => `<option value="${esc(o)}" ${o===selected?"selected":""}>${esc(o)}</option>`).join("");
+}
+
+const TABS = [
+  { id: "dashboard", label: "Dashboard", icon: "\u{1F4CA}" },
+  { id: "supply", label: "Farmers", icon: "\u{1F331}" },
+  { id: "demand", label: "Buyers", icon: "\u{1F6D2}" },
+  { id: "match", label: "Match & Log Deal", icon: "\u{1F91D}" },
+  { id: "transactions", label: "Deals", icon: "\u{1F4C8}" },
+  { id: "payments", label: "Payments Due", icon: "\u{1F4B3}" },
+  { id: "activity", label: "Activity Log", icon: "\u{1F553}" },
+  { id: "report", label: "Impact Report", icon: "\u{1F4CB}" },
+  { id: "export", label: "Export Data", icon: "\u{1F4E5}" },
+];
+
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = TABS.map(t => `
+    <button class="tab-btn ${currentTab===t.id?'active':''}" data-tab="${t.id}">${t.icon} ${t.label}${RESTRICTED_TABS.includes(t.id) && !unlockedTabs.has(t.id) ? ' \uD83D\uDD12' : ''}</button>
+  `).join("");
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.onclick = () => { currentTab = btn.dataset.tab; render(); };
+  });
+}
+
+function render() {
+  renderTabs();
+  const actorInput = document.getElementById("actorName");
+  if (actorInput) {
+    if (document.activeElement !== actorInput) actorInput.value = currentActor;
+    actorInput.oninput = () => { currentActor = actorInput.value; };
+  }
+  const content = document.getElementById("content");
+  if (currentTab === "dashboard") content.innerHTML = renderDashboard();
+  else if (currentTab === "supply") content.innerHTML = renderSupplyTab();
+  else if (currentTab === "demand") content.innerHTML = renderDemandTab();
+  else if (currentTab === "match") content.innerHTML = renderMatchTab();
+  else if (currentTab === "transactions") content.innerHTML = renderTransactionsTab();
+  else if (currentTab === "payments") content.innerHTML = renderPaymentsTab();
+  else if (currentTab === "activity") content.innerHTML = renderActivityTab();
+  else if (currentTab === "report") content.innerHTML = RESTRICTED_TABS.includes("report") && !unlockedTabs.has("report") ? renderPinGate("report", "Impact Report") : renderReportTab();
+  else if (currentTab === "export") content.innerHTML = RESTRICTED_TABS.includes("export") && !unlockedTabs.has("export") ? renderPinGate("export", "Export Data") : renderExportTab();
+  attachHandlers();
+}
+
+// ---------- DASHBOARD ----------
+function renderDashboard() {
+  const totalCommission = data.transactions.reduce((s,t) => s + (t.commissionEarned||0), 0);
+  const dealCount = data.transactions.length;
+  const openSupply = data.supply.filter(s => s.status !== "closed").length;
+  const openDemand = data.demand.filter(d => d.status !== "closed").length;
+
+  const byProduce = {};
+  data.transactions.forEach(t => { byProduce[t.produce] = (byProduce[t.produce]||0) + (t.commissionEarned||0); });
+  const sortedProduce = Object.entries(byProduce).sort((a,b)=>b[1]-a[1]);
+  const max = sortedProduce.length ? sortedProduce[0][1] : 1;
+
+  const recent = [...data.transactions].reverse().slice(0,5);
+
+  return `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-icon" style="background:${hex(('#1B5E20'),0.1)}">\u{1F4B0}</div><div><div class="stat-label">Commission earned</div><div class="stat-value">${naira(totalCommission)}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:${hex('#10285A',0.1)}">\u{1F91D}</div><div><div class="stat-label">Deals closed</div><div class="stat-value">${dealCount}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:${hex('#4C993F',0.1)}">\u{1F331}</div><div><div class="stat-label">Open farmer offers</div><div class="stat-value">${openSupply}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:${hex('#C47814',0.1)}">\u{1F6D2}</div><div><div class="stat-label">Open buyer requests</div><div class="stat-value">${openDemand}</div></div></div>
+    </div>
+
+    <div class="card">
+      <h3>Commission by produce</h3>
+      ${sortedProduce.length === 0 ? `<p class="empty" style="padding:10px 0;">Close your first deal to see this breakdown.</p>` :
+        sortedProduce.map(([produce, amt]) => `
+          <div class="bar-row">
+            <div class="bar-label">${esc(produce)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(amt/max*100)}%"></div></div>
+            <div class="bar-value">${naira(amt)}</div>
+          </div>
+        `).join("")
+      }
+    </div>
+
+    <div class="card">
+      <h3>Recent activity</h3>
+      ${recent.length === 0 ? `<div class="empty">No deals logged yet — closed deals will show up here.</div>` :
+        recent.map(t => `
+          <div class="list-item">
+            <div><b>${esc(t.produce)}</b> <span style="color:#9ca3af">— ${esc(t.farmer)} \u2192 ${esc(t.buyer)}</span></div>
+            <span class="badge" style="color:#1B5E20;background:#E8F4E7;">+${naira(t.commissionEarned)}</span>
+          </div>
+        `).join("")
+      }
+    </div>
+  `;
+}
+function hex(color, alpha) {
+  // returns rgba-ish via simple hex+alpha hack using color-mix fallback
+  return color + Math.round(alpha*255).toString(16).padStart(2,'0');
+}
+
+// ---------- SUPPLY TAB ----------
+function renderSupplyTab() {
+  const items = [...data.supply].reverse();
+  return `
+    ${!showSupplyForm ? `<button class="btn btn-leaf" id="openSupplyForm">+ New supply offer</button>` : renderSupplyForm()}
+    <div class="card" style="margin-top:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h3 style="margin:0;">\u{1F331} Farmer supply offers (${data.supply.length})</h3>
+        <button class="btn" style="background:#374151;padding:7px 12px;font-size:12px;" id="exportFarmersOnlyBtn">\u{1F512} \u{1F4E5} Download all farmer data (CSV)</button>
+      </div>
+      ${items.length === 0 ? `<div class="empty">No supply offers logged yet.</div>` :
+        items.map(s => `
+          <div class="list-item">
+            <div>
+              <div><b>${esc(s.farmer)}</b> <span class="badge" style="background:#E8F4E7;color:#4C993F;">${esc(s.produce)}</span> ${s.status==='closed'?'<span class="badge" style="background:#F3F4F6;color:#9ca3af;">closed</span>':''}</div>
+              <div class="meta">
+                <span>\u{1F4E6} ${esc(s.quantity)} ${esc(s.unit)}</span>
+                ${s.pricePerUnit ? `<span>${naira(s.pricePerUnit)}/unit</span>` : ''}
+                ${s.hectares ? `<span>\u{1F33E} ${esc(s.hectares)} ha</span>` : ''}
+                ${s.phone ? `<span>\u{1F4DE} ${esc(s.phone)}</span>` : ''}
+                ${s.location ? `<span>\u{1F4CD} ${esc(s.location)}</span>` : ''}
+                ${(s.community || s.lga || s.state) ? `<span>\u{1F3D8}\uFE0F ${[s.community, s.lga, s.state].filter(Boolean).map(esc).join(", ")}</span>` : ''}
+                ${mapLink(s) ? `<a href="${mapLink(s)}" target="_blank" rel="noopener" style="color:#4C993F;text-decoration:none;">\u{1F5FA}\uFE0F View on map</a>` : ''}
+              </div>
+            </div>
+            <button class="del-btn" data-del-supply="${s.id}">\u2715</button>
+          </div>
+        `).join("")
+      }
+    </div>
+  `;
+}
+function renderSupplyForm() {
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;">New farmer supply offer</h3>
+      <button class="del-btn" id="closeSupplyForm" style="font-size:18px;">\u2715</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Farmer name</label><input id="sf_farmer" placeholder="e.g. Musa Ibrahim"/></div>
+      <div class="field"><label>Phone</label><input id="sf_phone" placeholder="08…"/></div>
+      <div class="field"><label>Produce</label><select id="sf_produce">${selectOptions(PRODUCE_OPTIONS)}</select></div>
+      <div class="grid2">
+        <div class="field"><label>Quantity</label><input id="sf_quantity" type="number" placeholder="0"/></div>
+        <div class="field"><label>Unit</label><select id="sf_unit">${selectOptions(UNIT_OPTIONS)}</select></div>
+      </div>
+      <div class="field"><label>Asking price / unit (\u20a6)</label><input id="sf_price" type="number" placeholder="0"/></div>
+      <div class="field"><label>Hectares of land owned</label><input id="sf_hectares" type="number" step="0.1" placeholder="e.g. 2.5"/></div>
+      <div class="field"><label>Location</label>
+        <div style="display:flex;gap:6px;">
+          <input id="sf_location" placeholder="e.g. Lakwene" style="flex:1;"/>
+          <button type="button" class="btn btn-leaf" id="sf_useLoc" style="padding:9px 12px;font-size:12px;white-space:nowrap;">\u{1F4CD} Use my location</button>
+        </div>
+        <div id="sf_locStatus" style="font-size:11px;color:#9ca3af;margin-top:3px;"></div>
+        <input type="hidden" id="sf_lat"/><input type="hidden" id="sf_lng"/>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>State</label><input id="sf_state" value="Gombe"/></div>
+      <div class="field"><label>LGA</label><input id="sf_lga" value="Billiri"/></div>
+      <div class="field"><label>Community</label><input id="sf_community" placeholder="e.g. Lakwene"/></div>
+    </div>
+    <button class="btn btn-green block" id="submitSupply">+ Add supply offer</button>
+  </div>`;
+}
+
+// ---------- DEMAND TAB ----------
+function renderDemandTab() {
+  const items = [...data.demand].reverse();
+  return `
+    ${!showDemandForm ? `<button class="btn btn-navy" id="openDemandForm">+ New buyer request</button>` : renderDemandForm()}
+    <div class="card" style="margin-top:14px;">
+      <h3>\u{1F6D2} Buyer requests (${data.demand.length})</h3>
+      ${items.length === 0 ? `<div class="empty">No buyer requests logged yet.</div>` :
+        items.map(d => `
+          <div class="list-item">
+            <div>
+              <div><b>${esc(d.buyer)}</b> <span class="badge" style="background:#E7EAF3;color:#10285A;">${esc(d.produce)}</span> ${d.status==='closed'?'<span class="badge" style="background:#F3F4F6;color:#9ca3af;">closed</span>':''}</div>
+              <div class="meta">
+                <span>\u{1F4E6} ${esc(d.quantity)} ${esc(d.unit)}</span>
+                ${d.priceOfferedPerUnit ? `<span>${naira(d.priceOfferedPerUnit)}/unit</span>` : ''}
+                ${d.ownsShop ? `<span>\u{1F3EA} Shop: ${esc(d.ownsShop)}</span>` : ''}
+                ${d.phone ? `<span>\u{1F4DE} ${esc(d.phone)}</span>` : ''}
+                ${d.location ? `<span>\u{1F4CD} ${esc(d.location)}</span>` : ''}
+                ${(d.community || d.lga || d.state) ? `<span>\u{1F3D8}\uFE0F ${[d.community, d.lga, d.state].filter(Boolean).map(esc).join(", ")}</span>` : ''}
+                ${mapLink(d) ? `<a href="${mapLink(d)}" target="_blank" rel="noopener" style="color:#10285A;text-decoration:none;">\u{1F5FA}\uFE0F View on map</a>` : ''}
+              </div>
+            </div>
+            <button class="del-btn" data-del-demand="${d.id}">\u2715</button>
+          </div>
+        `).join("")
+      }
+    </div>
+  `;
+}
+function renderDemandForm() {
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;">New buyer request</h3>
+      <button class="del-btn" id="closeDemandForm" style="font-size:18px;">\u2715</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Buyer name</label><input id="df_buyer" placeholder="e.g. Billiri Market Wholesaler"/></div>
+      <div class="field"><label>Phone</label><input id="df_phone" placeholder="08…"/></div>
+      <div class="field"><label>Produce</label><select id="df_produce">${selectOptions(PRODUCE_OPTIONS)}</select></div>
+      <div class="grid2">
+        <div class="field"><label>Quantity needed</label><input id="df_quantity" type="number" placeholder="0"/></div>
+        <div class="field"><label>Unit</label><select id="df_unit">${selectOptions(UNIT_OPTIONS)}</select></div>
+      </div>
+      <div class="field"><label>Price offered / unit (\u20a6)</label><input id="df_price" type="number" placeholder="0"/></div>
+      <div class="field"><label>Owns a shop?</label>
+        <select id="df_ownsShop"><option value="">Select…</option><option value="Yes">Yes</option><option value="No">No</option></select>
+      </div>
+      <div class="field"><label>Location</label>
+        <div style="display:flex;gap:6px;">
+          <input id="df_location" placeholder="e.g. Gombe town" style="flex:1;"/>
+          <button type="button" class="btn btn-navy" id="df_useLoc" style="padding:9px 12px;font-size:12px;white-space:nowrap;">\u{1F4CD} Use my location</button>
+        </div>
+        <div id="df_locStatus" style="font-size:11px;color:#9ca3af;margin-top:3px;"></div>
+        <input type="hidden" id="df_lat"/><input type="hidden" id="df_lng"/>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>State</label><input id="df_state" value="Gombe"/></div>
+      <div class="field"><label>LGA</label><input id="df_lga" value="Billiri"/></div>
+      <div class="field"><label>Community</label><input id="df_community" placeholder="e.g. Gombe town"/></div>
+    </div>
+    <button class="btn btn-navy block" id="submitDemand">+ Add buyer request</button>
+  </div>`;
+}
+
+// ---------- MATCH TAB ----------
+let matchState = { supplyId:"", demandId:"", quantity:"", buyPrice:"", sellPrice:"", commType:"percent", commValue:"10", notes:"", payeeName:"", payeeBank:"", payeeAccount:"" };
+
+function renderMatchTab() {
+  const openSupply = data.supply.filter(s => s.status !== "closed");
+  const openDemand = data.demand.filter(d => d.status !== "closed");
+
+  if (openSupply.length === 0 || openDemand.length === 0) {
+    return `<div class="card"><h3>\u{1F91D} Match a farmer to a buyer & log the deal</h3>
+      <p style="font-size:13px;color:#9ca3af;">Add at least one open farmer supply offer and one open buyer request first, on the tabs above.</p>
+    </div>`;
+  }
+
+  const supplyMatch = openSupply.find(s => s.id === matchState.supplyId);
+  const demandMatch = openDemand.find(d => d.id === matchState.demandId);
+  const margin = (Number(matchState.sellPrice||0) - Number(matchState.buyPrice||0)) * Number(matchState.quantity||0);
+  const commission = matchState.commType === "percent"
+    ? margin * (Number(matchState.commValue||0)/100)
+    : Number(matchState.commValue||0);
+  const canLog = supplyMatch && demandMatch && matchState.quantity && matchState.buyPrice && matchState.sellPrice;
+
+  return `
+  <div class="card">
+    <h3>\u{1F91D} Match a farmer to a buyer & log the deal</h3>
+    <div class="grid2">
+      <div class="field"><label>Farmer / supply offer</label>
+        <select id="m_supply">
+          <option value="">Select…</option>
+          ${openSupply.map(s => `<option value="${s.id}" ${s.id===matchState.supplyId?'selected':''}>${esc(s.farmer)} — ${esc(s.produce)} (${esc(s.quantity)} ${esc(s.unit)})</option>`).join("")}
+        </select>
+      </div>
+      <div class="field"><label>Buyer / demand request</label>
+        <select id="m_demand">
+          <option value="">Select…</option>
+          ${openDemand.map(d => `<option value="${d.id}" ${d.id===matchState.demandId?'selected':''}>${esc(d.buyer)} — ${esc(d.produce)} (${esc(d.quantity)} ${esc(d.unit)})</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    ${supplyMatch && demandMatch && supplyMatch.produce !== demandMatch.produce ? `
+      <div class="warn">Note: produce types don't match (${esc(supplyMatch.produce)} vs ${esc(demandMatch.produce)}) — double-check this is intentional.</div>
+    ` : ""}
+
+    <div class="grid3">
+      <div class="field"><label>Quantity being sold</label><input id="m_quantity" type="number" value="${esc(matchState.quantity)}"/></div>
+      <div class="field"><label>Buy price / unit (\u20a6)</label><input id="m_buyPrice" type="number" value="${esc(matchState.buyPrice)}"/></div>
+      <div class="field"><label>Sell price / unit (\u20a6)</label><input id="m_sellPrice" type="number" value="${esc(matchState.sellPrice)}"/></div>
+    </div>
+
+    <div class="grid3" style="align-items:end;">
+      <div class="field"><label>Your commission</label>
+        <select id="m_commType">
+          <option value="percent" ${matchState.commType==='percent'?'selected':''}>% of margin</option>
+          <option value="fixed" ${matchState.commType==='fixed'?'selected':''}>Fixed amount (\u20a6)</option>
+        </select>
+      </div>
+      <div class="field"><label>${matchState.commType==='percent'?'Percent (%)':'Amount (\u20a6)'}</label><input id="m_commValue" type="number" value="${esc(matchState.commValue)}"/></div>
+      <div class="commission-box"><div class="lbl">You earn</div><div class="val">${naira(Math.max(0,commission))}</div></div>
+    </div>
+
+    <div class="field"><label>Notes (optional)</label><input id="m_notes" value="${esc(matchState.notes)}" placeholder="e.g. paid via bank transfer, delivered to Billiri market"/></div>
+
+    <div style="border-top:1px solid #f0f0f0;margin:14px 0;padding-top:12px;">
+      <div style="font-size:12px;color:#6B7280;margin-bottom:8px;">Who should receive this commission? (for your records only \u2014 you'll still send the transfer manually)</div>
+      <div class="grid3">
+        <div class="field"><label>Payee name</label><input id="m_payeeName" value="${esc(matchState.payeeName)}" placeholder="e.g. Fredrick Abdullahi"/></div>
+        <div class="field"><label>Bank name</label><input id="m_payeeBank" value="${esc(matchState.payeeBank)}" placeholder="e.g. GTBank"/></div>
+        <div class="field"><label>Account number</label><input id="m_payeeAccount" value="${esc(matchState.payeeAccount)}" placeholder="0123456789"/></div>
+      </div>
+    </div>
+
+    <button class="btn btn-green block" id="logDealBtn" ${canLog?'':'disabled'}>\u2713 Log this deal</button>
+  </div>`;
+}
+
+// ---------- TRANSACTIONS TAB ----------
+function renderTransactionsTab() {
+  const total = data.transactions.reduce((s,t)=>s+(t.commissionEarned||0),0);
+  const rows = [...data.transactions].reverse();
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;">\u{1F4C8} All logged deals</h3>
+      <span class="badge" style="background:#E8F4E7;color:#1B5E20;">Total: ${naira(total)}</span>
+    </div>
+    ${rows.length === 0 ? `<div class="empty">Deals you log will appear here, most recent first.</div>` : `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Produce</th><th>Farmer</th><th>Buyer</th><th>Qty</th><th>Margin</th><th style="text-align:right;">Commission</th></tr></thead>
+          <tbody>
+            ${rows.map(t => `
+              <tr>
+                <td>${new Date(t.date).toLocaleDateString()}</td>
+                <td>${esc(t.produce)}</td>
+                <td>${esc(t.farmer)}</td>
+                <td>${esc(t.buyer)}</td>
+                <td>${esc(t.quantity)} ${esc(t.unit)}</td>
+                <td>${naira((t.sellPricePerUnit - t.buyPricePerUnit) * t.quantity)}</td>
+                <td style="text-align:right;font-weight:600;color:#1B5E20;">${naira(t.commissionEarned)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `}
+  </div>`;
+}
+
+// ---------- PAYMENTS DUE TAB ----------
+function renderPaymentsTab() {
+  const all = [...data.transactions].reverse();
+  const unpaid = all.filter(t => t.paymentStatus !== "paid");
+  const paid = all.filter(t => t.paymentStatus === "paid");
+  const totalUnpaid = unpaid.reduce((s,t) => s + (t.commissionEarned||0), 0);
+
+  const row = (t, isPaid) => `
+    <div class="list-item" style="align-items:center;">
+      <div>
+        <div><b>${esc(t.payeeName || "\u2014 no payee set")}</b> ${t.payeeBank ? `<span style="color:#9ca3af;font-size:12px;">${esc(t.payeeBank)}</span>` : ""}</div>
+        <div class="meta">
+          <span>${esc(t.produce)} \u2014 ${esc(t.farmer)} \u2192 ${esc(t.buyer)}</span>
+          ${t.payeeAccount ? `<span>\u{1F3E6} ${esc(t.payeeAccount)}</span>` : ""}
+          <span>${new Date(t.date).toLocaleDateString()}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span class="badge" style="background:${isPaid?'#F3F4F6':'#FFF4E5'};color:${isPaid?'#6b7280':'#C47814'};font-weight:600;">${naira(t.commissionEarned)}</span>
+        <button class="btn ${isPaid?'':'btn-green'}" style="${isPaid?'background:#e5e7eb;color:#555;':''}padding:6px 12px;font-size:12px;" data-toggle-paid="${t.id}">
+          ${isPaid ? "Mark unpaid" : "Mark paid"}
+        </button>
+      </div>
+    </div>
+  `;
+
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;">\u{1F4B3} Payments due</h3>
+      <span class="badge" style="background:#FFF4E5;color:#C47814;">Outstanding: ${naira(totalUnpaid)}</span>
+    </div>
+    <p style="font-size:12px;color:#9ca3af;margin:6px 0 14px;">
+      This is a record-keeping list only \u2014 it does not move money. Send each transfer yourself via your bank app or Paystack/Flutterwave, then mark it as paid here.
+    </p>
+    ${unpaid.length === 0 ? `<div class="empty">No unpaid commissions right now.</div>` : unpaid.map(t => row(t, false)).join("")}
+  </div>
+
+  ${paid.length > 0 ? `
+    <div class="card">
+      <h3>\u2713 Paid</h3>
+      ${paid.map(t => row(t, true)).join("")}
+    </div>
+  ` : ""}
+  `;
+}
+
+function attachLocationCapture(btnId, statusId, latId, lngId, locInputId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.onclick = () => {
+    const status = document.getElementById(statusId);
+    if (!navigator.geolocation) {
+      status.textContent = "Location access not supported here — just type the place name above.";
+      return;
+    }
+    status.textContent = "Getting location…";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        document.getElementById(latId).value = pos.coords.latitude;
+        document.getElementById(lngId).value = pos.coords.longitude;
+        status.textContent = "\u2713 Location captured (" + pos.coords.latitude.toFixed(4) + ", " + pos.coords.longitude.toFixed(4) + ")";
+      },
+      (err) => {
+        status.textContent = "Couldn't get location (" + (err.message || "permission denied") + ") — just type the place name above instead.";
+      },
+      { timeout: 8000 }
+    );
+  };
+}
+
+function mapLink(item) {
+  if (item.lat && item.lng) {
+    return `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`;
+  }
+  if (item.location) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`;
+  }
+  return null;
+}
+
+// ---------- ACTIVITY LOG TAB ----------
+function renderActivityTab() {
+  const log = [...(data.activityLog || [])].reverse();
+  return `
+  <div class="card">
+    <h3>\u{1F553} Activity log</h3>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 12px;">
+      Every add, edit, and payment action is recorded here with a timestamp. Attribution depends on whoever typed their name in "Logging as" at the top \u2014 encourage your team to fill that in.
+    </p>
+    ${log.length === 0 ? `<div class="empty">No activity yet — actions will appear here as your team uses the tool.</div>` :
+      `<div class="tbl-wrap"><table>
+        <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Details</th></tr></thead>
+        <tbody>
+          ${log.map(a => `
+            <tr>
+              <td>${new Date(a.time).toLocaleString()}</td>
+              <td>${esc(a.actor)}</td>
+              <td>${esc(a.action)}</td>
+              <td style="white-space:normal;">${esc(a.details)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table></div>`
+    }
+  </div>`;
+}
+
+// ---------- PIN GATE ----------
+function renderPinGate(tabId, label) {
+  return `
+  <div class="card" style="text-align:center;padding:40px 20px;">
+    <div style="font-size:32px;margin-bottom:8px;">\u{1F512}</div>
+    <h3 style="margin:0 0 4px;">${esc(label)} is restricted</h3>
+    <p style="font-size:13px;color:#9ca3af;margin:0 0 18px;">Enter the PIN to view this section.</p>
+    <div style="max-width:220px;margin:0 auto;">
+      <input id="pinInput" type="password" inputmode="numeric" placeholder="PIN" style="text-align:center;letter-spacing:4px;font-size:18px;width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--border);" onkeydown="if(event.key==='Enter') document.getElementById('pinSubmit').click();"/>
+      <div id="pinError" style="color:#dc2626;font-size:12px;margin-top:6px;height:16px;"></div>
+      <button class="btn btn-green block" id="pinSubmit" data-pin-tab="${tabId}" style="margin-top:6px;">Unlock</button>
+    </div>
+  </div>`;
+}
+
+// ---------- IMPACT REPORT TAB ----------
+function renderReportTab() {
+  const t = data.transactions;
+  const uniqueFarmers = new Set(t.map(x => x.farmer)).size;
+  const uniqueBuyers = new Set(t.map(x => x.buyer)).size;
+  const totalDeals = t.length;
+  const totalCommission = t.reduce((s,x) => s + (x.commissionEarned||0), 0);
+  const totalValue = t.reduce((s,x) => s + (x.sellPricePerUnit * x.quantity || 0), 0);
+
+  const byProduce = {};
+  t.forEach(x => {
+    if (!byProduce[x.produce]) byProduce[x.produce] = { qty: 0, unit: x.unit, deals: 0 };
+    byProduce[x.produce].qty += Number(x.quantity) || 0;
+    byProduce[x.produce].deals += 1;
+  });
+
+  const dates = t.map(x => new Date(x.date)).sort((a,b)=>a-b);
+  const rangeText = dates.length
+    ? `${dates[0].toLocaleDateString()} \u2013 ${dates[dates.length-1].toLocaleDateString()}`
+    : "No deals logged yet";
+
+  const allLocations = [...data.supply, ...data.demand].filter(x => x.location).map(x => x.location);
+  const uniqueLocations = [...new Set(allLocations)];
+
+  return `
+  <div class="card" id="printableReport">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h3 style="margin:0;font-size:18px;color:#1B5E20;">Lausorgo Agric Innovation \u2014 Field Impact Report</h3>
+        <p style="font-size:12px;color:#9ca3af;margin:4px 0 0;">Generated ${new Date().toLocaleDateString()} \u2022 Activity period: ${rangeText}</p>
+      </div>
+      <button class="btn btn-green no-print" id="printReportBtn" style="padding:8px 14px;font-size:13px;">\u{1F5A8}\uFE0F Print / Save as PDF</button>
+    </div>
+
+    <div class="stat-grid" style="margin-top:18px;">
+      <div class="stat-card"><div class="stat-icon" style="background:#4C993F1A;">\u{1F468}\u200D\u{1F33E}</div><div><div class="stat-label">Farmers engaged</div><div class="stat-value">${uniqueFarmers}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:#10285A1A;">\u{1F6D2}</div><div><div class="stat-label">Buyers connected</div><div class="stat-value">${uniqueBuyers}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:#1B5E201A;">\u{1F91D}</div><div><div class="stat-label">Deals completed</div><div class="stat-value">${totalDeals}</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:#C478141A;">\u{1F4CD}</div><div><div class="stat-label">Locations reached</div><div class="stat-value">${uniqueLocations.length}</div></div></div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <h3 style="font-size:14px;">Volume aggregated by produce</h3>
+      ${Object.keys(byProduce).length === 0 ? `<p style="font-size:13px;color:#9ca3af;">No completed deals yet.</p>` :
+        `<table style="margin-top:6px;">
+          <thead><tr><th>Produce</th><th>Total quantity moved</th><th>Deals</th></tr></thead>
+          <tbody>
+            ${Object.entries(byProduce).map(([p,v]) => `<tr><td>${esc(p)}</td><td>${v.qty} ${esc(v.unit)}</td><td>${v.deals}</td></tr>`).join("")}
+          </tbody>
+        </table>`
+      }
+    </div>
+
+    <div class="grid2" style="margin-top:18px;">
+      <div>
+        <div class="stat-label">Total value transacted</div>
+        <div class="stat-value" style="color:#10285A;">${naira(totalValue)}</div>
+      </div>
+      <div>
+        <div class="stat-label">Total commission earned</div>
+        <div class="stat-value" style="color:#1B5E20;">${naira(totalCommission)}</div>
+      </div>
+    </div>
+
+    ${uniqueLocations.length > 0 ? `
+      <div style="margin-top:16px;">
+        <h3 style="font-size:14px;">Communities reached</h3>
+        <p style="font-size:13px;color:#374151;">${uniqueLocations.map(esc).join(", ")}</p>
+      </div>
+    ` : ""}
+
+    <p style="font-size:11px;color:#9ca3af;margin-top:20px;border-top:1px solid #f0f0f0;padding-top:10px;">
+      This report reflects real transactions logged directly by the Lausorgo Agric Innovation team through our internal farmer-buyer matching tool, and is suitable for inclusion in grant applications, partnership proposals, and progress updates.
+    </p>
+  </div>
+  <p class="no-print" style="font-size:12px;color:#9ca3af;">Tip: use "Print / Save as PDF" above, then choose "Save as PDF" as the destination to get a clean file you can attach to applications.</p>
+  `;
+}
+
+// ---------- EXPORT DATA TAB ----------
+function toCSV(rows, columns) {
+  const escCsv = (v) => {
+    const s = (v === null || v === undefined) ? "" : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const header = columns.map(c => escCsv(c.label)).join(",");
+  const body = rows.map(r => columns.map(c => escCsv(typeof c.value === "function" ? c.value(r) : r[c.value])).join(",")).join("\n");
+  return header + "\n" + body;
+}
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function renderExportTab() {
+  return `
+  <div class="card">
+    <h3>\u{1F4E5} Export your data</h3>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 14px;">
+      Downloads a spreadsheet file straight to your device \u2014 opens directly in Excel, Google Sheets, or Numbers. No internet connection needed for this.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-leaf" id="exportSupplyBtn">\u{1F331} Download Farmers (CSV)</button>
+      <button class="btn btn-navy" id="exportDemandBtn">\u{1F6D2} Download Buyers (CSV)</button>
+      <button class="btn btn-green" id="exportDealsBtn">\u{1F4C8} Download Deals & Commissions (CSV)</button>
+      <button class="btn" style="background:#C47814;" id="exportActivityBtn">\u{1F553} Download Activity Log (CSV)</button>
+      <button class="btn" style="background:#374151;" id="exportAllBtn">\u{1F5C3}\uFE0F Download full backup (JSON)</button>
+    </div>
+  </div>`;
+}
+
+// ---------- EVENT HANDLERS ----------
+function attachHandlers() {
+  // Supply tab
+  const openSupplyForm = document.getElementById("openSupplyForm");
+  if (openSupplyForm) openSupplyForm.onclick = () => { showSupplyForm = true; render(); };
+  const closeSupplyForm = document.getElementById("closeSupplyForm");
+  if (closeSupplyForm) closeSupplyForm.onclick = () => { showSupplyForm = false; render(); };
+  attachLocationCapture("sf_useLoc", "sf_locStatus", "sf_lat", "sf_lng", "sf_location");
+  const submitSupply = document.getElementById("submitSupply");
+  if (submitSupply) submitSupply.onclick = () => {
+    const farmer = document.getElementById("sf_farmer").value.trim();
+    const quantity = document.getElementById("sf_quantity").value;
+    if (!farmer || !quantity) return;
+    data.supply.push({
+      id: uid(), farmer, phone: document.getElementById("sf_phone").value.trim(),
+      produce: document.getElementById("sf_produce").value, quantity,
+      unit: document.getElementById("sf_unit").value,
+      pricePerUnit: document.getElementById("sf_price").value,
+      hectares: document.getElementById("sf_hectares").value,
+      location: document.getElementById("sf_location").value.trim(),
+      state: document.getElementById("sf_state").value.trim(),
+      lga: document.getElementById("sf_lga").value.trim(),
+      community: document.getElementById("sf_community").value.trim(),
+      lat: document.getElementById("sf_lat").value || null,
+      lng: document.getElementById("sf_lng").value || null,
+      date: new Date().toISOString(), status: "open"
+    });
+    logActivity("Added farmer offer", `${farmer} — ${document.getElementById("sf_produce").value}, ${quantity} ${document.getElementById("sf_unit").value}`);
+    showSupplyForm = false; persist(); render();
+  };
+  document.querySelectorAll("[data-del-supply]").forEach(btn => {
+    btn.onclick = () => {
+      const s = data.supply.find(x => x.id === btn.dataset.delSupply);
+      data.supply = data.supply.filter(s => s.id !== btn.dataset.delSupply);
+      if (s) logActivity("Deleted farmer offer", `${s.farmer} — ${s.produce}`);
+      persist(); render();
+    };
+  });
+
+  // Demand tab
+  const openDemandForm = document.getElementById("openDemandForm");
+  if (openDemandForm) openDemandForm.onclick = () => { showDemandForm = true; render(); };
+  const closeDemandForm = document.getElementById("closeDemandForm");
+  if (closeDemandForm) closeDemandForm.onclick = () => { showDemandForm = false; render(); };
+  attachLocationCapture("df_useLoc", "df_locStatus", "df_lat", "df_lng", "df_location");
+  const submitDemand = document.getElementById("submitDemand");
+  if (submitDemand) submitDemand.onclick = () => {
+    const buyer = document.getElementById("df_buyer").value.trim();
+    const quantity = document.getElementById("df_quantity").value;
+    if (!buyer || !quantity) return;
+    data.demand.push({
+      id: uid(), buyer, phone: document.getElementById("df_phone").value.trim(),
+      produce: document.getElementById("df_produce").value, quantity,
+      unit: document.getElementById("df_unit").value,
+      priceOfferedPerUnit: document.getElementById("df_price").value,
+      ownsShop: document.getElementById("df_ownsShop").value,
+      location: document.getElementById("df_location").value.trim(),
+      state: document.getElementById("df_state").value.trim(),
+      lga: document.getElementById("df_lga").value.trim(),
+      community: document.getElementById("df_community").value.trim(),
+      lat: document.getElementById("df_lat").value || null,
+      lng: document.getElementById("df_lng").value || null,
+      date: new Date().toISOString(), status: "open"
+    });
+    logActivity("Added buyer request", `${buyer} — ${document.getElementById("df_produce").value}, ${quantity} ${document.getElementById("df_unit").value}`);
+    showDemandForm = false; persist(); render();
+  };
+  document.querySelectorAll("[data-del-demand]").forEach(btn => {
+    btn.onclick = () => {
+      const d = data.demand.find(x => x.id === btn.dataset.delDemand);
+      data.demand = data.demand.filter(d => d.id !== btn.dataset.delDemand);
+      if (d) logActivity("Deleted buyer request", `${d.buyer} — ${d.produce}`);
+      persist(); render();
+    };
+  });
+
+  // Match tab
+  const m_supply = document.getElementById("m_supply");
+  if (m_supply) m_supply.onchange = () => {
+    matchState.supplyId = m_supply.value;
+    const s = data.supply.find(x => x.id === m_supply.value);
+    if (s) { matchState.buyPrice = s.pricePerUnit || ""; matchState.quantity = s.quantity || ""; }
+    render();
+  };
+  const m_demand = document.getElementById("m_demand");
+  if (m_demand) m_demand.onchange = () => {
+    matchState.demandId = m_demand.value;
+    const d = data.demand.find(x => x.id === m_demand.value);
+    if (d) { matchState.sellPrice = d.priceOfferedPerUnit || ""; }
+    render();
+  };
+  ["m_quantity","m_buyPrice","m_sellPrice","m_commValue","m_notes","m_payeeName","m_payeeBank","m_payeeAccount"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.oninput = () => {
+      const map = { m_quantity:"quantity", m_buyPrice:"buyPrice", m_sellPrice:"sellPrice", m_commValue:"commValue", m_notes:"notes", m_payeeName:"payeeName", m_payeeBank:"payeeBank", m_payeeAccount:"payeeAccount" };
+      matchState[map[id]] = el.value;
+      // Re-render only the commission box without losing focus: cheap approach — re-render whole tab but restore focus after
+      const focusId = document.activeElement ? document.activeElement.id : null;
+      render();
+      if (focusId) {
+        const toFocus = document.getElementById(focusId);
+        if (toFocus) { toFocus.focus(); if (toFocus.setSelectionRange) { const v=toFocus.value; toFocus.setSelectionRange(v.length, v.length);} }
+      }
+    };
+  });
+  const m_commType = document.getElementById("m_commType");
+  if (m_commType) m_commType.onchange = () => { matchState.commType = m_commType.value; render(); };
+  const logDealBtn = document.getElementById("logDealBtn");
+  if (logDealBtn) logDealBtn.onclick = () => {
+    const supplyMatch = data.supply.find(s => s.id === matchState.supplyId);
+    const demandMatch = data.demand.find(d => d.id === matchState.demandId);
+    if (!supplyMatch || !demandMatch) return;
+    const margin = (Number(matchState.sellPrice||0) - Number(matchState.buyPrice||0)) * Number(matchState.quantity||0);
+    const commissionEarned = Math.max(0, matchState.commType === "percent" ? margin * (Number(matchState.commValue||0)/100) : Number(matchState.commValue||0));
+    data.transactions.push({
+      id: uid(), date: new Date().toISOString(),
+      farmer: supplyMatch.farmer, buyer: demandMatch.buyer, produce: supplyMatch.produce,
+      quantity: Number(matchState.quantity), unit: supplyMatch.unit,
+      buyPricePerUnit: Number(matchState.buyPrice), sellPricePerUnit: Number(matchState.sellPrice),
+      commissionType: matchState.commType, commissionValue: Number(matchState.commValue),
+      commissionEarned, notes: matchState.notes, supplyId: supplyMatch.id, demandId: demandMatch.id,
+      payeeName: matchState.payeeName, payeeBank: matchState.payeeBank, payeeAccount: matchState.payeeAccount,
+      paymentStatus: "unpaid"
+    });
+    supplyMatch.status = "closed"; demandMatch.status = "closed";
+    logActivity("Logged deal", `${supplyMatch.produce} — ${supplyMatch.farmer} \u2192 ${demandMatch.buyer}, ${matchState.quantity} ${supplyMatch.unit}, commission ${naira(commissionEarned)}`);
+    matchState = { supplyId:"", demandId:"", quantity:"", buyPrice:"", sellPrice:"", commType:"percent", commValue:"10", notes:"", payeeName:"", payeeBank:"", payeeAccount:"" };
+    persist(); render();
+  };
+
+  // Payments tab
+  document.querySelectorAll("[data-toggle-paid]").forEach(btn => {
+    btn.onclick = () => {
+      const t = data.transactions.find(x => x.id === btn.dataset.togglePaid);
+      if (t) {
+        t.paymentStatus = t.paymentStatus === "paid" ? "unpaid" : "paid";
+        logActivity(t.paymentStatus === "paid" ? "Marked commission paid" : "Marked commission unpaid", `${t.payeeName || "Unnamed payee"} — ${naira(t.commissionEarned)}`);
+      }
+      persist(); render();
+    };
+  });
+
+  // Impact report — print
+  const printBtn = document.getElementById("printReportBtn");
+  if (printBtn) printBtn.onclick = () => window.print();
+
+  // Export tab
+  const FARMER_CSV_COLUMNS = [
+    {label:"Farmer", value:"farmer"}, {label:"Phone", value:"phone"}, {label:"Produce", value:"produce"},
+    {label:"Quantity", value:"quantity"}, {label:"Unit", value:"unit"}, {label:"Price per unit", value:"pricePerUnit"},
+    {label:"Hectares owned", value:"hectares"},
+    {label:"State", value:"state"}, {label:"LGA", value:"lga"}, {label:"Community", value:"community"},
+    {label:"Location", value:"location"}, {label:"Status", value:"status"},
+    {label:"Date", value:(r)=>new Date(r.date).toLocaleDateString()},
+  ];
+  const exportSupplyBtn = document.getElementById("exportSupplyBtn");
+  if (exportSupplyBtn) exportSupplyBtn.onclick = () => {
+    const csv = toCSV(data.supply, FARMER_CSV_COLUMNS);
+    downloadFile("lausorgo_farmers.csv", csv, "text/csv");
+  };
+  const exportFarmersOnlyBtn = document.getElementById("exportFarmersOnlyBtn");
+  if (exportFarmersOnlyBtn) exportFarmersOnlyBtn.onclick = () => {
+    if (!unlockedTabs.has("export")) {
+      const val = window.prompt("This download is PIN-protected. Enter PIN:");
+      if (val === null) return; // cancelled
+      if (val !== RESTRICTED_PIN) { alert("Incorrect PIN."); return; }
+      unlockedTabs.add("export");
+      logActivity("Unlocked restricted tab", "Export Data (via farmer download)");
+    }
+    const csv = toCSV(data.supply, FARMER_CSV_COLUMNS);
+    downloadFile("lausorgo_farmers.csv", csv, "text/csv");
+    logActivity("Exported farmer data", `${data.supply.length} farmer record(s) downloaded`);
+  };
+  const exportDemandBtn = document.getElementById("exportDemandBtn");
+  if (exportDemandBtn) exportDemandBtn.onclick = () => {
+    const csv = toCSV(data.demand, [
+      {label:"Buyer", value:"buyer"}, {label:"Phone", value:"phone"}, {label:"Produce", value:"produce"},
+      {label:"Quantity", value:"quantity"}, {label:"Unit", value:"unit"}, {label:"Price offered", value:"priceOfferedPerUnit"},
+      {label:"Owns a shop", value:"ownsShop"},
+      {label:"State", value:"state"}, {label:"LGA", value:"lga"}, {label:"Community", value:"community"},
+      {label:"Location", value:"location"}, {label:"Status", value:"status"},
+      {label:"Date", value:(r)=>new Date(r.date).toLocaleDateString()},
+    ]);
+    downloadFile("lausorgo_buyers.csv", csv, "text/csv");
+  };
+  const exportDealsBtn = document.getElementById("exportDealsBtn");
+  if (exportDealsBtn) exportDealsBtn.onclick = () => {
+    const csv = toCSV(data.transactions, [
+      {label:"Date", value:(r)=>new Date(r.date).toLocaleDateString()},
+      {label:"Produce", value:"produce"}, {label:"Farmer", value:"farmer"}, {label:"Buyer", value:"buyer"},
+      {label:"Quantity", value:"quantity"}, {label:"Unit", value:"unit"},
+      {label:"Buy price/unit", value:"buyPricePerUnit"}, {label:"Sell price/unit", value:"sellPricePerUnit"},
+      {label:"Margin", value:(r)=>(r.sellPricePerUnit-r.buyPricePerUnit)*r.quantity},
+      {label:"Commission earned", value:"commissionEarned"},
+      {label:"Payee", value:"payeeName"}, {label:"Payee bank", value:"payeeBank"}, {label:"Payee account", value:"payeeAccount"},
+      {label:"Payment status", value:"paymentStatus"}, {label:"Notes", value:"notes"},
+    ]);
+    downloadFile("lausorgo_deals.csv", csv, "text/csv");
+  };
+  const exportActivityBtn = document.getElementById("exportActivityBtn");
+  if (exportActivityBtn) exportActivityBtn.onclick = () => {
+    const csv = toCSV(data.activityLog || [], [
+      {label:"When", value:(r)=>new Date(r.time).toLocaleString()},
+      {label:"Who", value:"actor"}, {label:"Action", value:"action"}, {label:"Details", value:"details"},
+    ]);
+    downloadFile("lausorgo_activity_log.csv", csv, "text/csv");
+  };
+  const exportAllBtn = document.getElementById("exportAllBtn");
+  if (exportAllBtn) exportAllBtn.onclick = () => {
+    downloadFile("lausorgo_full_backup.json", JSON.stringify(data, null, 2), "application/json");
+  };
+
+  // PIN gate
+  const pinSubmit = document.getElementById("pinSubmit");
+  if (pinSubmit) pinSubmit.onclick = () => {
+    const val = document.getElementById("pinInput").value;
+    const tabId = pinSubmit.dataset.pinTab;
+    if (val === RESTRICTED_PIN) {
+      unlockedTabs.add(tabId);
+      logActivity("Unlocked restricted tab", tabId === "report" ? "Impact Report" : "Export Data");
+      render();
+    } else {
+      document.getElementById("pinError").textContent = "Incorrect PIN — try again.";
+      document.getElementById("pinInput").value = "";
+      document.getElementById("pinInput").focus();
+    }
+  };
+}
+
+loadData();
+</script>
+</body>
+</html>
