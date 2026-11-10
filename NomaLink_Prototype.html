@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NomaLink Prototype · Lausorgo Agric Innovation</title>
+<style>
+  :root { --green:#1B5E20; --leaf:#4C993F; --navy:#10285A; --amber:#9A5B0A; --bg:#F7FAF7; --ink:#1f2a22; --gray:#5d6b62; --border:#E2E8E2; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:760px; margin:0 auto; padding:14px 14px 70px; }
+  header h1 { font-size:20px; margin:0; color:var(--green); }
+  header p { font-size:12px; margin:2px 0 10px; color:var(--gray); }
+  .demo { background:#FFF4E5; color:#7a4a08; border-radius:10px; padding:8px 12px; font-size:12px; margin-bottom:10px; }
+  .status { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:12px; }
+  .status.on { background:#E8F4E7; color:#1B5E20; } .status.off { background:#FDECEC; color:#a12626; }
+  .tabs { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:12px; }
+  .tab { flex-shrink:0; padding:9px 13px; border-radius:11px; border:1px solid var(--border); background:#fff; font-size:14px; font-weight:500; cursor:pointer; color:#444; }
+  .tab.active { background:var(--green); color:#fff; border-color:var(--green); }
+  .card { background:#fff; border:1px solid #edf0ed; border-radius:14px; padding:16px; margin-bottom:14px; }
+  .card h3 { margin:0 0 10px; font-size:15px; color:#2d3a31; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .field { margin-bottom:9px; } .field label { display:block; font-size:12px; color:var(--gray); margin-bottom:3px; font-weight:500; }
+  input, select, textarea { width:100%; padding:10px; border:1px solid var(--border); border-radius:10px; font-size:15px; background:#fff; color:var(--ink); font-family:inherit; }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--leaf); border-color:transparent; }
+  .btn { border:none; border-radius:10px; padding:10px 15px; font-size:14px; font-weight:600; color:#fff; background:var(--green); cursor:pointer; }
+  .btn.alt { background:var(--navy); } .btn.leaf { background:var(--leaf); } .btn.ghost { background:#eef2ee; color:#334; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; } .btn.block { width:100%; }
+  .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
+  @media (min-width:600px){ .stats { grid-template-columns:repeat(4,1fr); } }
+  .stat { background:#fff; border:1px solid #edf0ed; border-radius:12px; padding:12px; }
+  .stat .l { font-size:11px; color:var(--gray); } .stat .v { font-size:20px; font-weight:700; color:var(--green); }
+  .item { border:1px solid #edf0ed; border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .item .m { font-size:12px; color:var(--gray); margin-top:3px; display:flex; flex-wrap:wrap; gap:3px 12px; }
+  .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; font-weight:600; }
+  .b-pend { background:#FFF4E5; color:#9A5B0A; } .b-sync { background:#E8F4E7; color:#1B5E20; } .b-q { background:#FDECEC; color:#a12626; } .b-crop { background:#E8F0FA; color:#10285A; }
+  .sms { background:#eef6ee; border-left:4px solid var(--leaf); border-radius:8px; padding:9px 11px; margin-top:6px; font-size:14px; line-height:1.4; }
+  .steps { display:grid; gap:8px; } .step { display:flex; gap:10px; font-size:14px; } .step b { color:var(--amber); min-width:18px; }
+  .empty { text-align:center; color:#9aa59d; padding:22px 8px; font-size:13px; }
+  .note { font-size:12px; color:var(--gray); }
+  .pair { border:1px solid #e3ebe3; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:8px 0; }
+  .warn { font-size:12px; color:#8a5a00; background:#fffbeb; border-radius:8px; padding:7px 9px; margin:6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>NomaLink <span style="font-weight:400;color:#5d6b62">· agent app prototype</span></h1>
+    <p>Lausorgo Agric Innovation · offline-first farmer-to-market link for basic-phone farmers</p>
+  </header>
+  <div class="demo"><b>Prototype.</b> Sync and SMS sending are simulated on this device to show the flow. Nothing leaves your phone unless a backend address is added in the code. Hausa message wording should be checked by a native speaker before real use.</div>
+  <div id="status"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "nomalink-prototype-v1";
+const BACKEND_URL = ""; // optional: paste a Google Apps Script web app URL here to really sync; leave empty for demo mode
+const LGAS = ["Billiri","Kaltungo","Shongom","Balanga","Other"];
+const CROPS = ["Maize","Sorghum","Groundnut","Cowpea (beans)","Tomatoes","Pepper","Onions","Other"];
+const HAUSA_CROP = {"Maize":"masara","Sorghum":"dawa","Groundnut":"gyada","Cowpea (beans)":"wake","Tomatoes":"tumatur","Pepper":"barkono","Onions":"albasa","Other":"amfanin gona"};
+const UNITS = ["Bag (100kg)","Bag (50kg)","Kg","Basket","Ton"];
+const HAUSA_UNIT = {"Bag (100kg)":"buhu (100kg)","Bag (50kg)":"buhu (50kg)","Kg":"kg","Basket":"kwando","Ton":"tan"};
+
+let state = { farmers:[], listings:[], buyers:[], deals:[], messages:[], offline:false, demo:false };
+let tab = "home";
+let simReply = null;
+
+const uid = () => Math.random().toString(36).slice(2,10);
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const naira = n => "₦" + Number(n||0).toLocaleString(undefined,{maximumFractionDigits:0});
+const digits = s => (s||"").replace(/\D/g,"");
+const opts = (list, sel) => list.map(o => `<option ${o===sel?"selected":""}>${esc(o)}</option>`).join("");
+
+function load() {
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch(e) {}
+}
+function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {} }
+function online() { return !state.offline && navigator.onLine !== false; }
+function pendingCount() {
+  return ["farmers","listings","buyers","deals"].reduce((n,k)=> n + state[k].filter(r=>r.sync==="pending").length, 0)
+       + state.messages.filter(m=>m.status==="queued").length;
+}
+
+// ---------- actions ----------
+function addRecord(kind, rec) { rec.id = uid(); rec.time = new Date().toISOString(); rec.sync = online() ? "synced" : "pending"; state[kind].push(rec); return rec; }
+
+function sendSms(to, name, text, kind) {
+  state.messages.push({ id:uid(), to, name, text, kind, time:new Date().toISOString(), status: online() ? "sent" : "queued" });
+}
+
+async function syncNow() {
+  if (!online()) return;
+  const btn = document.getElementById("syncBtn"); if (btn) { btn.disabled = true; btn.textContent = "Syncing…"; }
+  if (BACKEND_URL) {
+    try { await fetch(BACKEND_URL, { method:"POST", body: JSON.stringify({farmers:state.farmers,listings:state.listings,buyers:state.buyers,deals:state.deals}) }); } catch(e) { render(); return; }
+  } else { await new Promise(r => setTimeout(r, 700)); }
+  ["farmers","listings","buyers","deals"].forEach(k => state[k].forEach(r => { if (r.sync==="pending") r.sync="synced"; }));
+  state.messages.forEach(m => { if (m.status==="queued") m.status="sent"; });
+  save(); render();
+}
+
+function toggleOffline() {
+  state.offline = !state.offline; save(); render();
+  if (online()) syncNow();
+}
+
+function hausaMatchToFarmer(f, l, b) {
+  return `Lausorgo: Sannu ${f.name}. Akwai mai siyan ${HAUSA_CROP[l.crop]||l.crop}, ${l.quantity} ${HAUSA_UNIT[l.unit]||l.unit}, ${naira(b.priceOffered)} kowanne. Kira ${b.name}: ${b.phone}.`;
+}
+function hausaMatchToBuyer(f, l, b) {
+  return `Lausorgo: Sannu ${b.name}. Akwai manomi da ${HAUSA_CROP[l.crop]||l.crop}, ${l.quantity} ${HAUSA_UNIT[l.unit]||l.unit}, ${naira(l.price)} kowanne, a ${f.community}. Kira ${f.name}: ${f.phone}.`;
+}
+function hausaDeal(name, crop, qty, unit) {
+  return `Lausorgo: Na gode ${name}. An rubuta cinikin ${HAUSA_CROP[crop]||crop}, ${qty} ${HAUSA_UNIT[unit]||unit}.`;
+}
+
+// ---------- inbound SMS simulator ----------
+// Format: SAYAR <crop> <quantity> <unit> <price>   e.g. SAYAR MASARA 20 BUHU 45000   (SELL also accepted)
+function parseSms(text) {
+  const t = text.trim().toUpperCase().split(/\s+/);
+  if (t.length < 5 || !["SAYAR","SELL"].includes(t[0])) return null;
+  const cropMap = {"MASARA":"Maize","MAIZE":"Maize","DAWA":"Sorghum","SORGHUM":"Sorghum","GYADA":"Groundnut","GROUNDNUT":"Groundnut","WAKE":"Cowpea (beans)","BEANS":"Cowpea (beans)","COWPEA":"Cowpea (beans)","TUMATUR":"Tomatoes","TOMATOES":"Tomatoes","BARKONO":"Pepper","PEPPER":"Pepper","ALBASA":"Onions","ONIONS":"Onions"};
+  const unitMap = {"BUHU":"Bag (100kg)","BAG":"Bag (100kg)","KG":"Kg","KWANDO":"Basket","BASKET":"Basket","TAN":"Ton","TON":"Ton"};
+  const crop = cropMap[t[1]], qty = Number(t[2]), unit = unitMap[t[3]], price = Number(t[4].replace(/[^0-9.]/g,""));
+  if (!crop || !(qty>0) || !unit || !(price>0)) return null;
+  return { crop, qty, unit, price };
+}
+function inboundSms(phone, text) {
+  const f = state.farmers.find(x => digits(x.phone) === digits(phone));
+  if (!f) { simReply = { ok:false, text:"Lausorgo: Ba mu samu lambar wayarka ba. Ka je wurin wakilin Lausorgo don yin rajista." }; return; }
+  const p = parseSms(text);
+  if (!p) { simReply = { ok:false, text:"Lausorgo: Ba mu fahimta ba. Rubuta: SAYAR MASARA 20 BUHU 45000 (abu, adadi, ma'auni, farashi)." }; return; }
+  addRecord("listings", { farmerId:f.id, farmerName:f.name, crop:p.crop, quantity:p.qty, unit:p.unit, price:p.price, status:"open", via:"SMS" });
+  simReply = { ok:true, text:`Lausorgo: An karbi: ${HAUSA_CROP[p.crop]}, ${p.qty} ${HAUSA_UNIT[p.unit]}, ${naira(p.price)}. Za mu kira idan an sami mai saye.` };
+}
+
+// ---------- views ----------
+function badge(r) { return r.sync==="pending" ? '<span class="badge b-pend">waiting to sync</span>' : '<span class="badge b-sync">synced</span>'; }
+
+function renderStatus() {
+  const on = online(), p = pendingCount();
+  document.getElementById("status").innerHTML = `
+    <div class="status ${on?'on':'off'}">
+      <span>${on ? "\u{1F7E2} Online" : "\u{1F534} Offline (signal lost)"} · ${p} item${p===1?"":"s"} waiting to sync</span>
+      <span style="display:flex;gap:6px;">
+        <button class="btn ghost" id="offBtn" style="padding:7px 11px;font-size:12px;">${state.offline?"Restore signal":"Simulate no signal"}</button>
+        <button class="btn" id="syncBtn" style="padding:7px 11px;font-size:12px;" ${on&&p>0?"":"disabled"}>Sync now</button>
+      </span>
+    </div>`;
+}
+
+const TABS = [["home","Home"],["farmers","Farmers"],["sell","Produce"],["buyers","Buyers"],["match","Match"],["sms","SMS"]];
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = TABS.map(([id,l]) => `<button class="tab ${tab===id?'active':''}" data-tab="${id}">${l}</button>`).join("");
+}
+
+function viewHome() {
+  const totalComm = state.deals.reduce((s,d)=>s+d.commission,0);
+  return `
+  <div class="stats">
+    <div class="stat"><div class="l">Farmers registered</div><div class="v">${state.farmers.length}</div></div>
+    <div class="stat"><div class="l">Open produce listings</div><div class="v">${state.listings.filter(l=>l.status==="open").length}</div></div>
+    <div class="stat"><div class="l">Deals logged</div><div class="v">${state.deals.length}</div></div>
+    <div class="stat"><div class="l">Commission earned</div><div class="v">${naira(totalComm)}</div></div>
+  </div>
+  <div class="card"><h3>How NomaLink works</h3>
+    <div class="steps">
+      <div class="step"><b>1</b><span>A village agent registers the farmer (works with no signal).</span></div>
+      <div class="step"><b>2</b><span>The farmer lists produce through the agent, or by a short SMS from any phone.</span></div>
+      <div class="step"><b>3</b><span>Buyers post what they need.</span></div>
+      <div class="step"><b>4</b><span>The app matches both sides and texts them in Hausa.</span></div>
+      <div class="step"><b>5</b><span>The agent logs the deal. Commission is earned only on logged deals.</span></div>
+    </div>
+  </div>
+  <div class="card"><h3>Try the demo</h3>
+    <p class="note" style="margin-top:0">Load clearly-labelled sample records to see every screen, or clear them to start fresh.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn leaf" id="loadDemo">Load sample data</button>
+      <button class="btn ghost" id="clearAll">Clear everything</button>
+    </div>
+    ${state.demo ? '<p class="note">Sample data is loaded. Names are made up and marked "(sample)".</p>' : ""}
+  </div>`;
+}
+
+function viewFarmers() {
+  const items = [...state.farmers].reverse();
+  return `
+  <div class="card"><h3>Register a farmer</h3>
+    <div class="grid">
+      <div class="field"><label>Full name</label><input id="f_name" placeholder="e.g. Musa Ibrahim"></div>
+      <div class="field"><label>Phone</label><input id="f_phone" inputmode="tel" placeholder="080…"></div>
+      <div class="field"><label>Community</label><input id="f_comm" placeholder="e.g. Lakwene"></div>
+      <div class="field"><label>LGA</label><select id="f_lga">${opts(LGAS)}</select></div>
+      <div class="field"><label>Main crop</label><select id="f_crop">${opts(CROPS)}</select></div>
+      <div class="field"><label>Hectares farmed</label><input id="f_ha" type="number" step="0.1" placeholder="0"></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:6px 0 12px;"><input type="checkbox" id="f_consent" style="width:auto;margin-top:3px;"> The farmer agrees we may store their name, phone and farm details to match them to buyers.</label>
+    <button class="btn block" id="addFarmer">Save farmer</button>
+  </div>
+  <div class="card"><h3>Registered farmers (${state.farmers.length})</h3>
+    ${items.length===0 ? '<div class="empty">No farmers yet.</div>' : items.map(f=>`
+      <div class="item"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${esc(f.name)}</b>${badge(f)}</div>
+      <div class="m"><span>${esc(f.phone)}</span><span>${esc(f.community)}, ${esc(f.lga)}</span><span>${esc(f.crop)}</span><span>${esc(f.hectares||"?")} ha</span></div></div>`).join("")}
+    <button class="btn ghost" id="exportFarmers" style="margin-top:6px;">Download farmers (CSV)</button>
+    <p class="note">This file holds personal data. Share it only with people who need it.</p>
+  </div>`;
+}
+
+function viewSell() {
+  const open = state.listings.filter(l=>l.status==="open");
+  if (state.farmers.length===0) return `<div class="card"><div class="empty">Register a farmer first.</div></div>`;
+  return `
+  <div class="card"><h3>List a farmer’s produce</h3>
+    <div class="grid">
+      <div class="field" style="grid-column:1/-1"><label>Farmer</label><select id="l_farmer">${state.farmers.map(f=>`<option value="${f.id}">${esc(f.name)} · ${esc(f.community)}</option>`).join("")}</select></div>
+      <div class="field"><label>Produce</label><select id="l_crop">${opts(CROPS)}</select></div>
+      <div class="field"><label>Quantity</label><input id="l_qty" type="number" placeholder="0"></div>
+      <div class="field"><label>Unit</label><select id="l_unit">${opts(UNITS)}</select></div>
+      <div class="field"><label>Asking price per unit (₦)</label><input id="l_price" type="number" placeholder="0"></div>
+    </div>
+    <button class="btn block" id="addListing">Save listing</button>
+  </div>
+  <div class="card"><h3>Open listings (${open.length})</h3>
+    ${open.length===0?'<div class="empty">No open listings.</div>':[...open].reverse().map(l=>`
+      <div class="item"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${esc(l.farmerName)}</b>${badge(l)}</div>
+      <div class="m"><span class="badge b-crop">${esc(l.crop)}</span><span>${esc(l.quantity)} ${esc(l.unit)}</span><span>${naira(l.price)}/unit</span>${l.via?`<span>via ${esc(l.via)}</span>`:""}</div></div>`).join("")}
+  </div>`;
+}
+
+function viewBuyers() {
+  const open = state.buyers.filter(b=>b.status==="open");
+  return `
+  <div class="card"><h3>Add a buyer request</h3>
+    <div class="grid">
+      <div class="field"><label>Buyer name</label><input id="b_name" placeholder="e.g. Billiri Market Trader"></div>
+      <div class="field"><label>Phone</label><input id="b_phone" inputmode="tel" placeholder="080…"></div>
+      <div class="field"><label>Produce wanted</label><select id="b_crop">${opts(CROPS)}</select></div>
+      <div class="field"><label>Quantity</label><input id="b_qty" type="number" placeholder="0"></div>
+      <div class="field"><label>Unit</label><select id="b_unit">${opts(UNITS)}</select></div>
+      <div class="field"><label>Price offered per unit (₦)</label><input id="b_price" type="number" placeholder="0"></div>
+    </div>
+    <button class="btn alt block" id="addBuyer">Save buyer request</button>
+  </div>
+  <div class="card"><h3>Open buyer requests (${open.length})</h3>
+    ${open.length===0?'<div class="empty">No buyer requests yet.</div>':[...open].reverse().map(b=>`
+      <div class="item"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${esc(b.name)}</b>${badge(b)}</div>
+      <div class="m"><span class="badge b-crop">${esc(b.crop)}</span><span>${esc(b.quantity)} ${esc(b.unit)}</span><span>${naira(b.priceOffered)}/unit</span><span>${esc(b.phone)}</span></div></div>`).join("")}
+  </div>`;
+}
+
+function pairs() {
+  const out = [];
+  state.listings.filter(l=>l.status==="open").forEach(l => {
+    state.buyers.filter(b=>b.status==="open" && b.crop===l.crop).forEach(b => out.push([l,b]));
+  });
+  return out;
+}
+function viewMatch() {
+  const ps = pairs();
+  return `
+  <div class="card"><h3>Suggested matches (${ps.length})</h3>
+    <p class="note" style="margin-top:0">Same produce, open on both sides. Send the introduction texts, then log the deal once the farmer and buyer agree.</p>
+    ${ps.length===0 ? '<div class="empty">No matches yet. Add a farmer’s produce and a buyer request for the same crop.</div>' : ps.map(([l,b])=>{
+      const f = state.farmers.find(x=>x.id===l.farmerId) || {name:l.farmerName,phone:"",community:""};
+      const gap = Number(b.priceOffered)-Number(l.price);
+      const q = Math.min(Number(l.quantity),Number(b.quantity));
+      const k = l.id+"_"+b.id;
+      return `<div class="pair">
+        <div><b>${esc(l.crop)}</b> · ${esc(f.name)} (${esc(f.community)}) ↔ ${esc(b.name)}</div>
+        <div class="m note">Farmer asks ${naira(l.price)}/unit · Buyer offers ${naira(b.priceOffered)}/unit · ${gap>=0?"gap in farmer's favour":"buyer is "+naira(-gap)+" below the ask"}</div>
+        ${gap<0?'<div class="warn">The buyer’s offer is below the farmer’s ask. Agree a price before logging.</div>':""}
+        <div class="row3">
+          <div class="field" style="margin:0"><label>Quantity</label><input id="mq_${k}" type="number" value="${q}"></div>
+          <div class="field" style="margin:0"><label>Agreed price/unit (₦)</label><input id="mp_${k}" type="number" value="${Math.round((Number(l.price)+Number(b.priceOffered))/2)}"></div>
+          <div class="field" style="margin:0"><label>Commission % (example)</label><input id="mc_${k}" type="number" value="5"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn leaf" data-intro="${k}">Send intro SMS to both</button>
+          <button class="btn" data-deal="${k}">Log deal</button>
+        </div>
+      </div>`;}).join("")}
+  </div>
+  <div class="card"><h3>Deals logged (${state.deals.length})</h3>
+    ${state.deals.length===0?'<div class="empty">No deals yet.</div>':[...state.deals].reverse().map(d=>`
+      <div class="item"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${esc(d.crop)}: ${esc(d.farmerName)} → ${esc(d.buyerName)}</b>${badge(d)}</div>
+      <div class="m"><span>${esc(d.quantity)} ${esc(d.unit)} at ${naira(d.price)}</span><span>Value ${naira(d.value)}</span><span>Commission ${naira(d.commission)}</span></div></div>`).join("")}
+  </div>`;
+}
+
+function viewSms() {
+  const msgs = [...state.messages].reverse();
+  const sel = state.farmers.map(f=>`<option value="${esc(f.phone)}">${esc(f.name)} · ${esc(f.phone)}</option>`).join("");
+  return `
+  <div class="card"><h3>Farmer SMS simulator</h3>
+    <p class="note" style="margin-top:0">A farmer with any basic phone can list produce by text. Pick a registered farmer and send, for example: <b>SAYAR MASARA 20 BUHU 45000</b> (sell, maize, 20 bags, ₦45,000 each).</p>
+    ${state.farmers.length===0 ? '<div class="empty">Register a farmer first.</div>' : `
+    <div class="field"><label>Texting from</label><select id="s_phone">${sel}</select></div>
+    <div class="field"><label>Message</label><input id="s_text" value="SAYAR MASARA 20 BUHU 45000"></div>
+    <button class="btn block" id="sendSimSms">Send as farmer</button>
+    ${simReply ? `<div class="sms" style="${simReply.ok?'':'border-color:#d9534f;background:#fdecec;'}"><b>Reply to farmer:</b><br>${esc(simReply.text)}</div>` : ""}`}
+  </div>
+  <div class="card"><h3>Outgoing messages (${state.messages.length})</h3>
+    <p class="note" style="margin-top:0">With no signal, messages wait in the queue and go out when the signal returns. In this prototype, “sent” is simulated.</p>
+    ${msgs.length===0?'<div class="empty">No messages yet.</div>':msgs.map(m=>`
+      <div class="item"><div style="display:flex;justify-content:space-between;gap:8px;"><b>To ${esc(m.name)} (${esc(m.to)})</b><span class="badge ${m.status==='sent'?'b-sync':'b-q'}">${m.status==='sent'?'sent (simulated)':'queued, no signal'}</span></div>
+      <div class="sms">${esc(m.text)}</div></div>`).join("")}
+  </div>`;
+}
+
+// ---------- render ----------
+function render() {
+  renderStatus(); renderTabs();
+  const c = document.getElementById("content");
+  c.innerHTML = tab==="home"?viewHome(): tab==="farmers"?viewFarmers(): tab==="sell"?viewSell(): tab==="buyers"?viewBuyers(): tab==="match"?viewMatch(): viewSms();
+  attach();
+}
+
+function downloadFile(name, content, mime) {
+  const blob = new Blob([content], {type:mime}); const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+function csv(rows, cols) {
+  const e = v => { const s = v==null?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  return cols.map(c=>e(c[0])).join(",") + "\n" + rows.map(r=>cols.map(c=>e(r[c[1]])).join(",")).join("\n");
+}
+
+function attach() {
+  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+  const $ = id => document.getElementById(id);
+  if ($("offBtn")) $("offBtn").onclick = toggleOffline;
+  if ($("syncBtn")) $("syncBtn").onclick = syncNow;
+
+  if ($("loadDemo")) $("loadDemo").onclick = () => {
+    const names = [["Musa Ibrahim (sample)","08011110001","Lakwene","Billiri","Maize",2],["Hauwa Danladi (sample)","08011110002","Tudu","Billiri","Cowpea (beans)",1.5],["Yakubu Garba (sample)","08011110003","Kaltungo","Kaltungo","Groundnut",3]];
+    names.forEach(n => addRecord("farmers",{name:n[0],phone:n[1],community:n[2],lga:n[3],crop:n[4],hectares:n[5],consent:true}));
+    const F = state.farmers.slice(-3);
+    addRecord("listings",{farmerId:F[0].id,farmerName:F[0].name,crop:"Maize",quantity:20,unit:"Bag (100kg)",price:42000,status:"open"});
+    addRecord("listings",{farmerId:F[1].id,farmerName:F[1].name,crop:"Cowpea (beans)",quantity:10,unit:"Bag (100kg)",price:95000,status:"open"});
+    addRecord("buyers",{name:"Billiri Market Trader (sample)",phone:"08022220001",crop:"Maize",quantity:30,unit:"Bag (100kg)",priceOffered:46000,status:"open"});
+    state.demo = true; save(); render();
+  };
+  if ($("clearAll")) $("clearAll").onclick = () => { if (confirm("Delete every record on this device?")) { state = {farmers:[],listings:[],buyers:[],deals:[],messages:[],offline:false,demo:false}; simReply=null; save(); render(); } };
+
+  if ($("addFarmer")) $("addFarmer").onclick = () => {
+    const name = $("f_name").value.trim(), phone = $("f_phone").value.trim();
+    if (!name || !digits(phone)) { alert("Enter the farmer's name and phone number."); return; }
+    if (!$("f_consent").checked) { alert("Please confirm the farmer has agreed to their details being stored."); return; }
+    addRecord("farmers",{name,phone,community:$("f_comm").value.trim(),lga:$("f_lga").value,crop:$("f_crop").value,hectares:$("f_ha").value,consent:true});
+    save(); render();
+  };
+  if ($("exportFarmers")) $("exportFarmers").onclick = () => downloadFile("nomalink_farmers.csv", csv(state.farmers,[["Name","name"],["Phone","phone"],["Community","community"],["LGA","lga"],["Main crop","crop"],["Hectares","hectares"],["Registered","time"]]), "text/csv");
+
+  if ($("addListing")) $("addListing").onclick = () => {
+    const f = state.farmers.find(x=>x.id===$("l_farmer").value); const qty=Number($("l_qty").value), price=Number($("l_price").value);
+    if (!f || !(qty>0) || !(price>0)) { alert("Choose a farmer and enter quantity and price."); return; }
+    addRecord("listings",{farmerId:f.id,farmerName:f.name,crop:$("l_crop").value,quantity:qty,unit:$("l_unit").value,price,status:"open"});
+    save(); render();
+  };
+  if ($("addBuyer")) $("addBuyer").onclick = () => {
+    const name=$("b_name").value.trim(), qty=Number($("b_qty").value), price=Number($("b_price").value);
+    if (!name || !(qty>0) || !(price>0)) { alert("Enter the buyer's name, quantity and price."); return; }
+    addRecord("buyers",{name,phone:$("b_phone").value.trim(),crop:$("b_crop").value,quantity:qty,unit:$("b_unit").value,priceOffered:price,status:"open"});
+    save(); render();
+  };
+
+  document.querySelectorAll("[data-intro]").forEach(btn => btn.onclick = () => {
+    const [lid,bid] = btn.dataset.intro.split("_"); const l=state.listings.find(x=>x.id===lid), b=state.buyers.find(x=>x.id===bid); const f=state.farmers.find(x=>x.id===l.farmerId); if(!l||!b||!f) return;
+    sendSms(f.phone,f.name,hausaMatchToFarmer(f,l,b),"match"); sendSms(b.phone,b.name,hausaMatchToBuyer(f,l,b),"match");
+    save(); tab="sms"; render();
+  });
+  document.querySelectorAll("[data-deal]").forEach(btn => btn.onclick = () => {
+    const k = btn.dataset.deal; const [lid,bid] = k.split("_"); const l=state.listings.find(x=>x.id===lid), b=state.buyers.find(x=>x.id===bid); const f=state.farmers.find(x=>x.id===l.farmerId); if(!l||!b||!f) return;
+    const qty=Number(document.getElementById("mq_"+k).value), price=Number(document.getElementById("mp_"+k).value), rate=Number(document.getElementById("mc_"+k).value||0);
+    if (!(qty>0) || !(price>0)) { alert("Enter the quantity and the agreed price."); return; }
+    const value = qty*price;
+    addRecord("deals",{farmerName:f.name,buyerName:b.name,crop:l.crop,quantity:qty,unit:l.unit,price,value,commission:Math.round(value*rate/100),rate});
+    l.status="closed"; b.status="closed"; l.sync = online()?"synced":"pending"; b.sync = l.sync;
+    sendSms(f.phone,f.name,hausaDeal(f.name,l.crop,qty,l.unit),"deal"); sendSms(b.phone,b.name,hausaDeal(b.name,l.crop,qty,l.unit),"deal");
+    save(); render();
+  });
+
+  if ($("sendSimSms")) $("sendSimSms").onclick = () => {
+    inboundSms($("s_phone").value, $("s_text").value);
+    if (simReply && simReply.ok) { const f = state.farmers.find(x=>digits(x.phone)===digits($("s_phone").value)); if (f) sendSms(f.phone,f.name,simReply.text,"reply"); }
+    save(); render();
+  };
+}
+
+window.addEventListener("online", () => { render(); if (online()) syncNow(); });
+window.addEventListener("offline", render);
+load(); render();
+</script>
+</body>
+</html>
