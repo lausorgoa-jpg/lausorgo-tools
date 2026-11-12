@@ -1,0 +1,407 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2f6b3f"><title>Impact Ledger</title>
+<style>
+:root{--bg:#f6f3ec;--card:#fffdf8;--ink:#1f2a22;--mute:#6b746c;--line:#e4dfd2;--acc:#2f6b3f;--acc2:#e9f1e6;--warn:#b4531a;--warn2:#fbeadc;--gold:#c58b1d;--bad:#a8332b;--shadow:0 1px 2px rgba(0,0,0,.06),0 6px 18px rgba(30,40,30,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a15;--card:#1a241d;--ink:#eef2ea;--mute:#9aa79c;--line:#2b382e;--acc:#7cc58f;--acc2:#213427;--warn:#f0a26b;--warn2:#3a2a1d;--gold:#e5b44f;--bad:#f08a80;--shadow:none}}
+:root[data-theme="dark"]{--bg:#121a15;--card:#1a241d;--ink:#eef2ea;--mute:#9aa79c;--line:#2b382e;--acc:#7cc58f;--acc2:#213427;--warn:#f0a26b;--warn2:#3a2a1d;--gold:#e5b44f;--bad:#f08a80;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:720px;margin:0 auto;padding:16px 16px 110px}
+h1{font-size:22px;margin:0;letter-spacing:-.01em}
+h2{font-size:13px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);font-weight:600}
+.top button.btn{min-width:44px;font-size:18px;padding:0}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:6px}
+.sub{color:var(--mute);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:12px 14px;margin:8px 0}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.row:first-child{border-top:0}
+.grow{flex:1;min-width:0}
+.title{font-weight:550;overflow-wrap:anywhere}
+.done .title{text-decoration:line-through;color:var(--mute)}
+.meta{font-size:13px;color:var(--mute);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-top:2px}
+.chip{font-size:12px;padding:1px 8px;border-radius:99px;background:var(--acc2);color:var(--acc);white-space:nowrap}
+.chip.w{background:var(--warn2);color:var(--warn)}
+.chip.g{background:var(--line);color:var(--mute)}
+.check{width:28px;height:28px;border-radius:9px;border:2px solid var(--line);background:var(--card);flex:none;display:grid;place-items:center;color:#fff;font-size:16px;padding:0;cursor:pointer}
+.done .check{background:var(--acc);border-color:var(--acc)}
+.dots{letter-spacing:1px;color:var(--gold);font-size:11px}
+.bar{height:8px;border-radius:9px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--acc);border-radius:9px}
+.bar.w>i{background:var(--gold)}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}
+.tabs div{display:flex;max-width:720px;width:100%;gap:4px}
+.tabs button{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:13px;padding:8px 4px;border-radius:10px;cursor:pointer;min-height:44px}
+.tabs button.on{background:var(--acc2);color:var(--acc);font-weight:650}
+.fab{position:fixed;right:max(16px,calc(50% - 344px));bottom:calc(76px + env(safe-area-inset-bottom));background:var(--acc);color:#fff;border:0;border-radius:99px;padding:0 20px;height:48px;font:inherit;font-weight:650;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer;z-index:6}
+.dark-on-fab{color:var(--bg)}
+button.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:0 14px;min-height:44px;cursor:pointer}
+button.btn.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:650}
+button.btn.d{color:var(--bad)}
+a.btn{display:inline-flex;align-items:center;text-decoration:none;font-size:14px;color:var(--acc);padding:0 4px;min-height:36px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:44px;font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;min-height:40px;cursor:pointer}
+.seg button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:650}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+.nav b{text-align:center;flex:1}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.tile small{color:var(--mute);display:block;font-size:12px}
+.tile b{font-size:19px;font-variant-numeric:tabular-nums}
+.tile.in b{color:var(--acc)}.tile.out b{color:var(--warn)}
+.line{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:3px 0}
+.line span:last-child{font-variant-numeric:tabular-nums}
+textarea,input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;min-height:44px}
+textarea{min-height:84px;resize:vertical}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 4px;font-size:18px}
+.acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.acts .p{flex:1}
+.empty{text-align:center;color:var(--mute);padding:22px 8px}
+.note{font-size:13px;color:var(--mute);background:var(--acc2);border-radius:10px;padding:8px 10px;margin:8px 0}
+.q{border-left:3px solid var(--gold);padding:2px 0 2px 10px;margin:8px 0;font-size:14px}
+.q small{color:var(--mute);display:block}
+</style></head><body>
+<div id="app"></div>
+<script>
+(function(){
+const $app=document.getElementById('app');
+function el(t,p,...k){const e=document.createElement(t);for(const a in(p||{})){const v=p[a];if(v==null||v===false)continue;if(a==='class')e.className=v;else if(a.startsWith('on'))e[a]=v;else if(a==='text')e.textContent=v;else if(a==='value'||a==='checked'||a==='disabled')e[a]=v;else e.setAttribute(a,v===true?'':v)}
+ for(const c of k.flat()){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(String(c)))}return e}
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c,12)};
+const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const monday=d=>{const x=new Date(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+const todayS=()=>ymd(new Date());
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const fmtD=s=>{const d=parse(s);return DAY[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()]};
+const naira=n=>(n<0?'-':'')+'₦'+Math.abs(Math.round(n)).toLocaleString('en-NG');
+const keyFor=(h,d)=>h==='day'?ymd(d):h==='week'?ymd(monday(d)):h==='month'?ymd(d).slice(0,7):String(d.getFullYear());
+const rangeOf=(h,d)=>{if(h==='day')return[ymd(d),ymd(d)];if(h==='week'){const m=monday(d);return[ymd(m),ymd(addD(m,6))]}
+ if(h==='month')return[ymd(new Date(d.getFullYear(),d.getMonth(),1,12)),ymd(new Date(d.getFullYear(),d.getMonth()+1,0,12))];
+ return[d.getFullYear()+'-01-01',d.getFullYear()+'-12-31']};
+const HZ=[['day','Daily'],['week','Weekly'],['month','Monthly'],['year','Yearly']];
+const HNAME={day:'Today',week:'This week',month:'This month',year:'This year'};
+const AREAS=['Faith & personal','Business (Lausorgo)','Funding & applications','Farmers & field','Learning','Health','Family & community','Money'];
+const GROUPS=[
+ {g:'Giving',k:'give',o:[['tithe','Tithe'],['offering','Offering'],['donation','Donation / charity'],['support','Family support & gifts']]},
+ {g:'Food & home',k:'home',o:[['feeding','Feeding / food'],['rent','Rent'],['utilities','Utilities (light, water)'],['household','Household items']]},
+ {g:'Personal',k:'pers',o:[['clothing','Clothing & shoes'],['grooming','Toiletries & grooming'],['health','Health & medical'],['airtime','Airtime & data']]},
+ {g:'Transport',k:'trans',o:[['transport','Transport / fare'],['fuel','Fuel']]},
+ {g:'Work & growth',k:'work',o:[['bizexp','Business expense'],['learning','Training & education'],['tools','Books, tools & equipment']]},
+ {g:'Obligations',k:'obl',o:[['loan','Loan repayment'],['fees','Fees, charges & taxes']]},
+ {g:'Life',k:'life',o:[['fun','Recreation'],['events','Events & celebrations'],['other','Other / miscellaneous']]},
+ {g:'Saving (set aside)',k:'save',o:[['savings','Savings'],['emergency','Emergency fund'],['invest','Investment']]},
+ {g:'Income (money in)',k:'inc',o:[['salary','Salary / allowance'],['bizinc','Business income'],['grant','Grants & prizes'],['gift','Gifts received'],['otherinc','Other income']]}];
+const CATG={},CATN={};GROUPS.forEach(G=>G.o.forEach(([v,l])=>{CATG[v]=G.k;CATN[v]=l}));
+const GNAME={};GROUPS.forEach(G=>GNAME[G.k]=G.g);
+
+let dl=null,db=null,uid=null,S={plans:[],notes:{},spend:[],pledges:[]},loaded=0,tab='today',R={h:'week',off:0},M={y:new Date().getFullYear(),m:new Date().getMonth(),yr:false},Pf='all',theme=null;
+const col=n=>db.collection('data/users/'+uid+'/app/'+n);
+const rid=()=>Math.random().toString(36).slice(2,10);
+
+/* ---------- plan occurrences ---------- */
+function isDone(p,key){return !!(p.done&&p.done[p.repeat?key:'once'])}
+function visibleToday(p,now){
+ const h=p.horizon,[,end]=rangeOf(h,now),key=keyFor(h,now),t=ymd(now);
+ if(p.repeat)return{show:true,key};
+ const dn=p.done&&p.done.once;
+ if(dn)return{show:keyFor(h,parse(dn))===key,key:'once'};
+ const due=p.due||(h==='day'?t:'');
+ return{show:!due||due<=end,key:'once',overdue:!!due&&due<t&&h==='day'||(!!p.due&&p.due<t)};
+}
+function occIn(p,a,b){ // occurrences within [a,b] (strings), up to today
+ const t=todayS(),out=[];
+ if(!p.repeat){const ref=(p.done&&p.done.once)||p.due||(p.created||'').slice(0,10)||t;if(ref>=a&&ref<=b)out.push({done:!!(p.done&&p.done.once)});return out}
+ const keys=new Set();for(let d=parse(a);ymd(d)<=b&&ymd(d)<=t;d=addD(d,1))keys.add(keyFor(p.horizon,d));
+ keys.forEach(k=>out.push({done:!!(p.done&&p.done[k])}));return out}
+function toggle(p,key){const k=p.repeat?key:'once',done={...(p.done||{})};if(done[k])delete done[k];else done[k]=p.repeat?true:todayS();
+ const o={...p,done};delete o.id;return col('plans').doc(p.id).set(o)}
+
+/* ---------- calendar link ---------- */
+function calLink(p){
+ const base=p.due||todayS(),d=base.replace(/-/g,'');let dates;
+ if(p.time){const[h,m]=p.time.split(':').map(Number),e=new Date(2000,0,1,h,m+30);dates=d+'T'+pad(h)+pad(m)+'00/'+d+'T'+pad(e.getHours())+pad(e.getMinutes())+'00'}
+ else dates=d+'/'+ymd(addD(parse(base),1)).replace(/-/g,'');
+ const q=new URLSearchParams({action:'TEMPLATE',text:p.title||'Plan',details:(p.remark?p.remark+'\n\n':'')+'From my Impact Ledger',dates,ctz:'Africa/Lagos'});
+ if(p.repeat)q.set('recur','RRULE:FREQ='+{day:'DAILY',week:'WEEKLY',month:'MONTHLY',year:'YEARLY'}[p.horizon]);
+ return'https://calendar.google.com/calendar/render?'+q.toString()}
+
+/* ---------- sheet ---------- */
+function openSheet({title,fields,data,onSave,onDelete,extra}){
+ const v={...data},inputs={};
+ const body=el('div',{});
+ fields.forEach(f=>{
+  const lab=el('label',{text:f.label,for:'f_'+f.k});let inp;
+  if(f.type==='seg'){inp=el('div',{class:'seg'});const draw=()=>{inp.replaceChildren(...f.opts.map(([val,l])=>el('button',{type:'button',class:String(v[f.k])===String(val)?'on':'',text:l,onclick:()=>{v[f.k]=val;draw();if(f.onchange)f.onchange()}})))};draw()}
+  else if(f.type==='area'){inp=el('textarea',{id:'f_'+f.k,value:v[f.k]||'',placeholder:f.ph||'',oninput:e=>v[f.k]=e.target.value})}
+  else if(f.type==='select'){inp=el('select',{id:'f_'+f.k,onchange:e=>v[f.k]=e.target.value});
+   if(f.groups)f.groups.forEach(G=>inp.append(el('optgroup',{label:G.g},...G.o.map(([a,b])=>el('option',{value:a,text:b})))));
+   else f.opts.forEach(([a,b])=>inp.append(el('option',{value:a,text:b})));inp.value=v[f.k]||''}
+  else{inp=el('input',{id:'f_'+f.k,type:f.type==='number'?'text':f.type,value:v[f.k]==null?'':v[f.k],placeholder:f.ph||'',oninput:e=>v[f.k]=e.target.value});if(f.type==='number')inp.setAttribute('inputmode','decimal')}
+  inputs[f.k]=inp;body.append(lab,inp)});
+ let armed=false;const close=()=>{scrim.remove();render()};
+ const err=el('div',{class:'note',style:'display:none;background:var(--warn2);color:var(--warn)'});
+ const del=onDelete&&el('button',{class:'btn d',type:'button',text:'Delete',onclick:async()=>{if(!armed){armed=true;del.textContent='Tap again to delete';return}try{await onDelete();close()}catch(e){err.textContent='Could not delete.';err.style.display='block'}}});
+ const sheet=el('div',{class:'sheet',role:'dialog'},el('h3',{text:title}),body,extra&&extra(v),err,
+  el('div',{class:'acts'},el('button',{class:'btn p',type:'button',text:'Save',onclick:async()=>{
+   try{const r=await onSave(v);if(r===false)return;close()}catch(e){err.textContent=(e&&e.message)||'Could not save. Your access may be view-only.';err.style.display='block'}}}),
+   el('button',{class:'btn',type:'button',text:'Cancel',onclick:close}),del));
+ const scrim=el('div',{class:'scrim',onclick:e=>{if(e.target===scrim)close()}},sheet);document.body.append(scrim);return v}
+
+function planSheet(p){
+ const isNew=!p;p=p||{horizon:'day',repeat:true,impact:3,area:AREAS[1],title:'',remark:'',due:'',time:''};
+ openSheet({title:isNew?'New plan':'Edit plan',data:{...p,repeat:p.repeat?'r':'o'},
+  fields:[{k:'title',label:'What do I want to do?',type:'text',ph:'e.g. Visit two farmers'},
+   {k:'horizon',label:'Time frame',type:'seg',opts:HZ},
+   {k:'repeat',label:'How often',type:'seg',opts:[['r','Repeats every period'],['o','Just once']]},
+   {k:'area',label:'Area of life / work',type:'select',opts:AREAS.map(a=>[a,a])},
+   {k:'impact',label:'Impact / importance (1 low – 5 high)',type:'seg',opts:[1,2,3,4,5].map(n=>[n,String(n)])},
+   {k:'due',label:'Date (for one-off, or the first date for the calendar)',type:'date'},
+   {k:'time',label:'Reminder time (optional, for Google Calendar)',type:'time'},
+   {k:'remark',label:'Remark / notes',type:'area',ph:'Why it matters, what to remember, what happened…'}],
+  extra:v=>el('div',{class:'note'},'Use the “Add to Google Calendar” link after saving to get phone reminders.'),
+  onSave:async v=>{if(!(v.title||'').trim()){return false}
+   const o={title:v.title.trim(),horizon:v.horizon,repeat:v.repeat==='r',area:v.area||AREAS[0],impact:+v.impact||3,due:v.due||'',time:v.time||'',remark:v.remark||'',done:p.done||{},created:p.created||todayS()};
+   if(p.example)o.example=false;await col('plans').doc(p.id||rid()).set(o)},
+  onDelete:p.id?()=>col('plans').doc(p.id).delete():null});}
+
+function spendSheet(s){
+ const isNew=!s;s=s||{date:todayS(),cat:'feeding',amount:'',note:''};
+ openSheet({title:isNew?'Record money':'Edit entry',data:s,
+  fields:[{k:'cat',label:'Category',type:'select',groups:GROUPS},
+   {k:'amount',label:'Amount (₦)',type:'number',ph:'0'},
+   {k:'date',label:'Date',type:'date'},
+   {k:'note',label:'Remark',type:'text',ph:'e.g. Sunday offering, market food, shirt'}],
+  extra:()=>null,
+  onSave:async v=>{const a=parseFloat(String(v.amount).replace(/,/g,''));if(!(a>0))return false;
+   await col('spend').doc(s.id||rid()).set({cat:v.cat||'feeding',amount:a,date:v.date||todayS(),note:v.note||''})},
+  onDelete:s.id?()=>col('spend').doc(s.id).delete():null});}
+
+function pledgeSheet(p){
+ const isNew=!p;p=p||{dir:'give',who:'',amount:'',paid:'',due:'',note:''};
+ openSheet({title:isNew?'New pledge':'Edit pledge',data:p,
+  fields:[{k:'dir',label:'Type',type:'seg',opts:[['give','I pledged to give'],['receive','Promised to me']]},
+   {k:'who',label:'To / from whom, and for what',type:'text',ph:'e.g. Church building fund, Samaila, a supporter'},
+   {k:'amount',label:'Pledged amount (₦)',type:'number',ph:'0'},
+   {k:'paid',label:'Paid / received so far (₦)',type:'number',ph:'0'},
+   {k:'due',label:'Due date (optional)',type:'date'},
+   {k:'note',label:'Remark',type:'area',ph:'Details, reminders, what was said'}],
+  extra:()=>el('div',{class:'note',text:'A pledge is a promise, not money moved. When you actually pay, also record it under Giving so your spending stays correct.'}),
+  onSave:async v=>{const a=parseFloat(String(v.amount).replace(/,/g,'')),pd=parseFloat(String(v.paid||'0').replace(/,/g,''))||0;
+   if(!(a>0)||!(v.who||'').trim())return false;
+   await col('pledges').doc(p.id||rid()).set({dir:v.dir||'give',who:v.who.trim(),amount:a,paid:Math.max(0,pd),due:v.due||'',note:v.note||'',created:p.created||todayS()})},
+  onDelete:p.id?()=>col('pledges').doc(p.id).delete():null});}
+
+/* ---------- csv ---------- */
+function csvCell(v){if(v==null)return'';if(typeof v==='number')return String(v);let t=String(v);if(/^[=+\-@\t\r]/.test(t))t="'"+t;return/[",\n\r]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t}
+function toCsv(head,rows){return'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')}
+const EXPORTS=[
+ ['Plans','plans',()=>toCsv(['Title','Time frame','Repeats','Area','Impact (1-5)','Date','Time','Remark','Times completed'],S.plans.map(p=>[p.title,p.horizon,p.repeat?'yes':'no',p.area,p.impact,p.due,p.time,p.remark,Object.keys(p.done||{}).length]))],
+ ['Money','money',()=>toCsv(['Date','Group','Category','Amount (NGN)','Remark'],S.spend.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(x=>[x.date,GNAME[CATG[x.cat]]||'',CATN[x.cat]||x.cat,x.amount,x.note]))],
+ ['Pledges','pledges',()=>toCsv(['Type','Who / what for','Pledged (NGN)','Paid or received (NGN)','Outstanding (NGN)','Due','Remark'],S.pledges.map(x=>[x.dir==='give'?'I pledged':'Promised to me',x.who,x.amount,x.paid||0,Math.max(0,x.amount-(x.paid||0)),x.due,x.note]))],
+ ['Remarks & ratings','remarks',()=>toCsv(['Period','Rating','Remark'],Object.entries(S.notes).filter(([k,n])=>n.text||n.score).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,n])=>[k.replace(/^d:/,'Day ').replace(/^w:/,'Week of ').replace(/^m:/,'Month ').replace(/^y:/,'Year '),n.score||'',n.text]))]];
+let exportMsg='';
+/* ---------- Supabase backup (manual, private rows) ---------- */
+const SB={url:'https://ruqgwctsfjzruddcsekk.supabase.co',key:'sb_publishable_1h0Th4UigMxt8FQsU3qzxw_srbR4zG5',lib:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.min.js'};
+let sbc=null,sbUser=null,sbMsg='',sbBusy=false;
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+function sbLoad(){return new Promise((ok,no)=>{if(window.supabase)return ok();const sc=document.createElement('script');sc.src=SB.lib;sc.onload=()=>ok();sc.onerror=()=>no(new Error('Could not load the Supabase library. Your viewer may block outside connections.'));document.head.append(sc);setTimeout(()=>no(new Error('Timed out loading Supabase.')),12000)})}
+async function sbClient(){if(sbc)return sbc;await sbLoad();sbc=window.supabase.createClient(SB.url,SB.key,{auth:{persistSession:true,autoRefreshToken:true}});const{data}=await sbc.auth.getSession();sbUser=data&&data.session?data.session.user:null;return sbc}
+function sbSignIn(){openSheet({title:'Sign in to my Supabase',data:{email:'',pw:''},fields:[{k:'email',label:'Email (the user you created in Supabase)',type:'email'},{k:'pw',label:'Password',type:'password'}],
+ extra:()=>el('div',{class:'note',text:'Your password goes only to Supabase and is not stored by this page.'}),
+ onSave:async v=>{const c=await sbClient();const{data,error}=await c.auth.signInWithPassword({email:(v.email||'').trim(),password:v.pw||''});if(error)throw new Error(error.message);sbUser=data.user;sbMsg='Signed in.';setTimeout(()=>syncNow(false),200)}})}
+const KINDS=['plans','notes','spend','pledges'];
+let syncT=null;
+function schedulePush(){if(!sbUser)return;clearTimeout(syncT);syncT=setTimeout(()=>syncNow(true),2000)}
+async function syncNow(quiet){if(sbBusy)return;sbBusy=true;if(!quiet){sbMsg='Syncing…';render()}
+ try{const c=await sbClient();if(!sbUser)throw new Error('Please sign in first.');
+  const{data,error}=await c.from('ledger_rows').select('kind,id,data,updated_at').limit(10000);if(error)throw new Error(error.message);
+  const remote={};let pulled=0,pushed=0;
+  for(const r of data){if(!KINDS.includes(r.kind))continue;remote[r.kind+'/'+r.id]=r;const ru=(r.data&&r.data._u)||Date.parse(r.updated_at)||0;const loc=(store[r.kind]||{})[r.id];
+   if(!loc||ru>(loc._u||0)){store[r.kind]=store[r.kind]||{};store[r.kind][r.id]={...r.data,_u:ru};pulled++}}
+  const up=[];KINDS.forEach(k=>Object.entries(store[k]||{}).forEach(([id,d])=>{const r=remote[k+'/'+id];const ru=r?((r.data&&r.data._u)||Date.parse(r.updated_at)||0):-1;if(!r||(d._u||0)>ru)up.push({kind:k,id,data:d,updated_at:new Date().toISOString()})}));
+  for(let i=0;i<up.length;i+=300){const{error:e2}=await c.from('ledger_rows').upsert(up.slice(i,i+300),{onConflict:'user_id,kind,id'});if(e2)throw new Error(e2.message)}
+  pushed=up.length;persist();KINDS.forEach(k=>(subs[k]||[]).forEach(f=>fire(k,f)));
+  lsSet('il_last',new Date().toISOString());sbMsg='Synced. Got '+pulled+' new, sent '+pushed+'.'}catch(e){sbMsg='Sync failed: '+(e.message||e)}
+ sbBusy=false;render()}
+async function sbOut(){try{const c=await sbClient();await c.auth.signOut()}catch(e){}sbUser=null;sbMsg='Signed out. Your data stays on this device.';render()}
+/* ---------- CSV import ---------- */
+function parseCsv(t){t=t.replace(/^\ufeff/,'');const rows=[];let r=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}else if(c==='"')q=true;else if(c===','){r.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;r.push(f);f='';if(r.length>1||r[0]!=='')rows.push(r);r=[]}else f+=c}
+ if(f!==''||r.length){r.push(f);rows.push(r)}return rows}
+async function importCsv(file){try{const rows=parseCsv(await file.text());const h=rows.shift()||[];const unq=v=>String(v||'').replace(/^'(?=[=+\-@])/,'');let n=0;
+ const exists=(name,fn)=>Object.values(store[name]||{}).some(x=>!x._del&&fn(x));
+ const byName={};Object.entries(CATN).forEach(([k,v])=>byName[v]=k);
+ if(h[0]==='Title'&&h[1]==='Time frame'){for(const r of rows){const p={title:unq(r[0]),horizon:r[1],repeat:r[2]==='yes',area:r[3]||AREAS[0],impact:+r[4]||3,due:r[5]||'',time:r[6]||'',remark:unq(r[7]),done:{},created:todayS()};if(!p.title||!['day','week','month','year'].includes(p.horizon)||exists('plans',x=>x.title===p.title&&x.horizon===p.horizon))continue;await col('plans').doc(rid()).set(p);n++}}
+ else if(h[0]==='Date'&&h[2]==='Category'){for(const r of rows){const a=parseFloat(r[3]);const cat=byName[r[2]]||'other';if(!(a>0)||!r[0])continue;if(exists('spend',x=>x.date===r[0]&&x.cat===cat&&x.amount===a&&(x.note||'')===unq(r[4])))continue;await col('spend').doc(rid()).set({date:r[0],cat,amount:a,note:unq(r[4])});n++}}
+ else if(h[0]==='Type'&&h[1]==='Who / what for'){for(const r of rows){const a=parseFloat(r[2]);if(!(a>0)||!r[1])continue;if(exists('pledges',x=>x.who===unq(r[1])&&x.amount===a))continue;await col('pledges').doc(rid()).set({dir:r[0]==='I pledged'?'give':'receive',who:unq(r[1]),amount:a,paid:parseFloat(r[3])||0,due:r[5]||'',note:unq(r[6]),created:todayS()});n++}}
+ else throw new Error('This is not a Plans, Money or Pledges file from the ledger.');
+ sbMsg='Imported '+n+' new item'+(n===1?'':'s')+'.'}catch(e){sbMsg='Import failed: '+(e.message||e)}render()}
+async function doExport(name,fn,node){
+ 
+ try{await dl.save({filename:'impact-ledger-'+name+'-'+todayS()+'.csv',data:fn()});exportMsg=''}catch(e){exportMsg=e&&e.code==='declined'?'':'Could not save the file ('+((e&&e.code)||'error')+').'}render()}
+
+/* ---------- views ---------- */
+const dots=n=>el('span',{class:'dots',text:'●'.repeat(Math.max(1,Math.min(5,n||3)))});
+function planRow(p,key,overdue){
+ const dn=isDone(p,key);
+ return el('div',{class:'row'+(dn?' done':''),onclick:()=>planSheet(p)},
+  el('button',{class:'check',type:'button','aria-label':dn?'Mark not done':'Mark done',text:dn?'✓':'',onclick:e=>{e.stopPropagation();toggle(p,key).catch(()=>{})}}),
+  el('div',{class:'grow'},el('div',{class:'title',text:p.title}),
+   el('div',{class:'meta'},p.time?el('span',{text:p.time}):null,el('span',{class:'chip g',text:p.area}),dots(p.impact),overdue&&!dn?el('span',{class:'chip w',text:'overdue'}):null,p.example?el('span',{class:'chip g',text:'example'}):null,p.remark?el('span',{text:'· '+(p.remark.length>40?p.remark.slice(0,40)+'…':p.remark)}):null)));}
+
+function bar(pct,warn){return el('div',{class:'bar'+(warn?' w':'')},el('i',{style:'width:'+Math.max(0,Math.min(100,pct))+'%'}))}
+
+function vToday(){
+ const now=new Date(),t=ymd(now),root=el('div',{});
+ root.append(el('div',{class:'top'},el('div',{},el('h1',{text:fmtD(t)}),el('div',{class:'sub',text:'What I will do, and what happened'})),themeBtn()));
+ if(!S.plans.length){root.append(el('div',{class:'card empty'},el('div',{text:'Nothing planned yet.'}),el('p',{class:'sub',text:'Start with a ready-made set (you can edit or delete every item), or add your own with the + button.'}),el('button',{class:'btn p',text:'Add starter plans',onclick:seed})))}
+ let tot=0,dn=0,pts=0,ptsd=0;
+ const secs=HZ.map(([h])=>{const items=[];S.plans.forEach(p=>{if(p.horizon!==h)return;const v=visibleToday(p,now);if(v.show)items.push({p,v})});return[h,items]});
+ secs.forEach(([h,items])=>items.forEach(({p,v})=>{tot++;pts+=p.impact||3;if(isDone(p,v.key)){dn++;ptsd+=p.impact||3}}));
+ if(tot){root.append(el('div',{class:'card'},el('div',{class:'line'},el('span',{text:'Progress across my plans'}),el('span',{text:dn+' of '+tot+' done'})),bar(tot?dn/tot*100:0),el('div',{class:'meta',text:'Impact earned: '+ptsd+' of '+pts+' points'})))}
+ secs.forEach(([h,items])=>{if(!items.length)return;
+  items.sort((a,b)=>(isDone(a.p,a.v.key)-isDone(b.p,b.v.key))||(a.p.time||'99').localeCompare(b.p.time||'99'));
+  const d=items.filter(x=>isDone(x.p,x.v.key)).length;
+  root.append(el('h2',{text:HNAME[h]+'  ·  '+d+'/'+items.length}),el('div',{class:'card'},...items.map(x=>planRow(x.p,x.v.key,x.v.overdue))))});
+ // journal
+ const n=S.notes['d:'+t]||{text:'',score:0};
+ const ta=el('textarea',{placeholder:'How did today go? What did I learn? What will I do differently?',value:n.text||''});
+ const sc=el('div',{class:'seg'});let score=n.score||0;
+ const drawS=()=>sc.replaceChildren(...[1,2,3,4,5].map(i=>el('button',{type:'button',class:score===i?'on':'',text:String(i),onclick:()=>{score=i;drawS();save()}})));drawS();
+ const save=()=>col('notes').doc('d:'+t).set({text:ta.value,score,date:t}).catch(()=>{});
+ ta.onchange=save;
+ root.append(el('h2',{text:"Today's remark"}),el('div',{class:'card'},el('div',{class:'sub',text:'Rate the day (1 = hard, 5 = great)'}),sc,el('label',{text:'Remark'}),ta,el('div',{class:'meta',text:'Saves when you tap outside the box.'})));
+ return root}
+
+function vPlans(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'My plans'}),el('div',{class:'sub',text:'Day, week, month and year'})),themeBtn()));
+ root.append(el('div',{class:'seg'},...[['all','All'],...HZ].map(([k,l])=>el('button',{class:Pf===k?'on':'',text:l,onclick:()=>{Pf=k;render()}}))));
+ HZ.forEach(([h,l])=>{if(Pf!=='all'&&Pf!==h)return;const items=S.plans.filter(p=>p.horizon===h);
+  root.append(el('h2',{text:l+' ('+items.length+')'}));
+  if(!items.length){root.append(el('div',{class:'card empty',text:'No '+l.toLowerCase()+' plans yet.'}));return}
+  root.append(el('div',{class:'card'},...items.map(p=>el('div',{class:'row',onclick:()=>planSheet(p)},el('div',{class:'grow'},el('div',{class:'title',text:p.title}),el('div',{class:'meta'},el('span',{class:'chip',text:p.repeat?'repeats':'once'+(p.due?' · '+fmtD(p.due):'')}),el('span',{class:'chip g',text:p.area}),dots(p.impact),p.example?el('span',{class:'chip g',text:'example'}):null)),
+   el('a',{class:'btn',href:calLink(p),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation(),text:'Calendar ↗'}))))) });
+ root.append(el('div',{class:'note',text:'Google Reminders cannot be linked automatically from a web page. “Calendar ↗” opens Google Calendar with the plan pre-filled (and repeating). Save it there and your phone will notify you.'}));
+ return root}
+
+function monthShift(n){const d=new Date(M.y,M.m+n,1);M.y=d.getFullYear();M.m=d.getMonth();render()}
+function pledgeBlock(){
+ const open=S.pledges.filter(p=>p.amount-(p.paid||0)>0),done=S.pledges.filter(p=>p.amount-(p.paid||0)<=0);
+ const sum=d=>open.filter(p=>p.dir===d).reduce((a,p)=>a+p.amount-(p.paid||0),0);
+ const row=p=>{const left=p.amount-(p.paid||0),late=p.due&&p.due<todayS()&&left>0;
+  return el('div',{class:'row',onclick:()=>pledgeSheet(p)},el('div',{class:'grow'},el('div',{class:'title',text:p.who}),el('div',{class:'meta'},el('span',{class:'chip'+(p.dir==='give'?' w':''),text:p.dir==='give'?'I owe':'owed to me'}),p.due?el('span',{text:'due '+fmtD(p.due)}):null,late?el('span',{class:'chip w',text:'overdue'}):null),bar((p.paid||0)/p.amount*100,p.dir==='give')),el('div',{style:'text-align:right'},el('b',{text:naira(left)}),el('div',{class:'meta',text:'of '+naira(p.amount)})))};
+ const out=[el('h2',{text:'Pledges'})];
+ if(S.pledges.length)out.push(el('div',{class:'tiles'},el('div',{class:'tile out'},el('small',{text:'I still owe (pledged)'}),el('b',{text:naira(sum('give'))})),el('div',{class:'tile in'},el('small',{text:'Still owed to me'}),el('b',{text:naira(sum('receive'))}))));
+ out.push(el('div',{class:'card'},...(open.length?open.map(row):[el('div',{class:'empty',text:S.pledges.length?'All pledges settled.':'No pledges yet.'})]),el('div',{class:'acts'},el('button',{class:'btn p',type:'button',text:'+ Pledge',onclick:()=>pledgeSheet()}))));
+ if(done.length)out.push(el('div',{class:'meta',text:done.length+' settled pledge'+(done.length>1?'s':'')+' (tap Edit by recording a new one; settled ones stay in your CSV export).'}));
+ return out}
+function vMoney(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Money'}),el('div',{class:'sub',text:'Where it comes from, where it goes'})),themeBtn()));
+ root.append(el('div',{class:'seg'},el('button',{class:!M.yr?'on':'',text:'Month',onclick:()=>{M.yr=false;render()}}),el('button',{class:M.yr?'on':'',text:'Year',onclick:()=>{M.yr=true;render()}})));
+ const label=M.yr?String(M.y):MON[M.m]+' '+M.y;
+ root.append(el('div',{class:'nav'},el('button',{class:'btn',text:'‹',onclick:()=>M.yr?(M.y--,render()):monthShift(-1)}),el('b',{text:label}),el('button',{class:'btn',text:'›',onclick:()=>M.yr?(M.y++,render()):monthShift(1)})));
+ const pre=M.yr?String(M.y):M.y+'-'+pad(M.m+1);
+ const rows=S.spend.filter(s=>(s.date||'').startsWith(pre));
+ const sums={};let inc=0,spent=0,saved=0;
+ rows.forEach(s=>{const g=CATG[s.cat]||'life';sums[s.cat]=(sums[s.cat]||0)+s.amount;if(g==='inc')inc+=s.amount;else if(g==='save')saved+=s.amount;else spent+=s.amount});
+ const give=['tithe','offering','donation','support'].reduce((a,c)=>a+(sums[c]||0),0);
+ root.append(el('div',{class:'tiles'},
+  el('div',{class:'tile in'},el('small',{text:'Money in'}),el('b',{text:naira(inc)})),
+  el('div',{class:'tile out'},el('small',{text:'Spent'}),el('b',{text:naira(spent)})),
+  el('div',{class:'tile'},el('small',{text:'Set aside (saving)'}),el('b',{text:naira(saved)})),
+  el('div',{class:'tile'},el('small',{text:'Left (in − spent − saved)'}),el('b',{text:naira(inc-spent-saved)}))));
+ if(inc>0)root.append(el('div',{class:'note',text:'Giving is '+Math.round(give/inc*100)+'% of income ('+naira(give)+'); saving is '+Math.round(saved/inc*100)+'%.'}));
+ else if(give>0)root.append(el('div',{class:'note',text:'Giving this period: '+naira(give)+'. Record your income to see it as a percentage.'}));
+ root.append(...pledgeBlock());
+ GROUPS.forEach(G=>{const tot=G.o.reduce((a,[c])=>a+(sums[c]||0),0);if(!tot)return;
+  const base=G.k==='inc'?tot:(spent||1);
+  root.append(el('h2',{text:G.g+'  ·  '+naira(tot)}),el('div',{class:'card'},...G.o.filter(([c])=>sums[c]).map(([c,l])=>el('div',{},el('div',{class:'line'},el('span',{text:l}),el('span',{text:naira(sums[c])})),G.k==='inc'||G.k==='save'?null:bar(sums[c]/base*100,G.k==='give'))))) });
+ root.append(el('h2',{text:'Entries ('+rows.length+')'}));
+ if(!rows.length)root.append(el('div',{class:'card empty',text:'Nothing recorded for this period. Tap “+ Money” to add.'}));
+ else root.append(el('div',{class:'card'},...rows.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>el('div',{class:'row',onclick:()=>spendSheet(s)},el('div',{class:'grow'},el('div',{class:'title',text:CATN[s.cat]||s.cat}),el('div',{class:'meta',text:fmtD(s.date)+(s.note?' · '+s.note:'')})),el('b',{text:(CATG[s.cat]==='inc'?'+':'')+naira(s.amount),style:CATG[s.cat]==='inc'?'color:var(--acc)':''})))));
+ return root}
+
+function anchor(){const t=new Date();return R.h==='day'?addD(t,R.off):R.h==='week'?addD(t,R.off*7):R.h==='month'?new Date(t.getFullYear(),t.getMonth()+R.off,15,12):new Date(t.getFullYear()+R.off,5,15,12)}
+function vReview(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Review'}),el('div',{class:'sub',text:'How am I doing, and what difference am I making?'})),themeBtn()));
+ root.append(el('div',{class:'seg'},...HZ.map(([k,l])=>el('button',{class:R.h===k?'on':'',text:l.replace('ly','').replace('Dai','Day'),onclick:()=>{R.h=k;R.off=0;render()}}))));
+ const an=anchor(),[a,b]=rangeOf(R.h,an),pk=R.h[0]+':'+keyFor(R.h,an);
+ const lab=R.h==='day'?fmtD(a):R.h==='week'?fmtD(a)+' – '+fmtD(b):R.h==='month'?MON[an.getMonth()]+' '+an.getFullYear():String(an.getFullYear());
+ root.append(el('div',{class:'nav'},el('button',{class:'btn',text:'‹',onclick:()=>{R.off--;render()}}),el('b',{text:lab}),el('button',{class:'btn',text:'›',disabled:R.off>=0,onclick:()=>{R.off++;render()}})));
+ let tot=0,dn=0,pts=0,ptsd=0;const area={};
+ S.plans.forEach(p=>occIn(p,a,b).forEach(o=>{const w=p.impact||3;tot++;pts+=w;area[p.area]=area[p.area]||{t:0,d:0};area[p.area].t++;if(o.done){dn++;ptsd+=w;area[p.area].d++}}));
+ root.append(el('div',{class:'tiles'},el('div',{class:'tile in'},el('small',{text:'Completed'}),el('b',{text:tot?Math.round(dn/tot*100)+'%':'–'}),el('small',{text:dn+' of '+tot+' plans'})),
+  el('div',{class:'tile'},el('small',{text:'Impact earned'}),el('b',{text:pts?Math.round(ptsd/pts*100)+'%':'–'}),el('small',{text:ptsd+' of '+pts+' points'}))));
+ if(Object.keys(area).length){root.append(el('h2',{text:'By area'}),el('div',{class:'card'},...Object.entries(area).sort((x,y)=>y[1].t-x[1].t).map(([k,v])=>el('div',{},el('div',{class:'line'},el('span',{text:k}),el('span',{text:v.d+'/'+v.t})),bar(v.t?v.d/v.t*100:0)))))}
+ else root.append(el('div',{class:'card empty',text:'No plans fall in this period yet.'}));
+ // scores
+ const sc=Object.values(S.notes).filter(n=>n.date&&n.date>=a&&n.date<=b&&n.score);
+ if(sc.length)root.append(el('div',{class:'card'},el('div',{class:'line'},el('span',{text:'Average day rating'}),el('span',{text:(sc.reduce((x,n)=>x+n.score,0)/sc.length).toFixed(1)+' / 5  ('+sc.length+' days)'}))));
+ // money
+ let inc=0,spent=0,saved=0,give=0;S.spend.forEach(s=>{if(s.date<a||s.date>b)return;const g=CATG[s.cat];if(g==='inc')inc+=s.amount;else if(g==='save')saved+=s.amount;else{spent+=s.amount;if(g==='give')give+=s.amount}});
+ if(inc||spent||saved)root.append(el('h2',{text:'Money'}),el('div',{class:'card'},el('div',{class:'line'},el('span',{text:'In'}),el('span',{text:naira(inc)})),el('div',{class:'line'},el('span',{text:'Spent'}),el('span',{text:naira(spent)})),el('div',{class:'line'},el('span',{text:'Saved'}),el('span',{text:naira(saved)})),el('div',{class:'line'},el('span',{text:'Given (tithe, offering, donations, support)'}),el('span',{text:naira(give)}))));
+ // export
+ root.append(el('h2',{text:'Download my data (CSV)'}),el('div',{class:'card'},el('div',{class:'seg'},...EXPORTS.map(([l,n,f])=>el('button',{type:'button',text:l,onclick:()=>doExport(n,f)}))),exportMsg?el('div',{class:'note',text:exportMsg}):null,el('div',{class:'meta',text:'Opens in Excel or Google Sheets.'})));
+ // supabase
+ const fi=el('input',{type:'file',accept:'.csv,text/csv',style:'display:none',onchange:e=>{const f=e.target.files[0];if(f)importCsv(f)}});
+ root.append(el('h2',{text:'Sync and import'}),el('div',{class:'card'},
+  sbUser?el('div',{class:'line'},el('span',{text:'Signed in'}),el('span',{text:sbUser.email||''})):el('div',{class:'sub',text:'Your data lives on this device. Sign in to also keep a private copy in your Supabase and share it between your phone and computer.'}),
+  el('div',{class:'acts'},sbUser?[el('button',{class:'btn p',type:'button',disabled:sbBusy,text:'Sync now',onclick:()=>syncNow(false)}),el('button',{class:'btn',type:'button',text:'Sign out',onclick:sbOut})]:[el('button',{class:'btn p',type:'button',text:'Sign in to sync',onclick:sbSignIn})],el('button',{class:'btn',type:'button',text:'Import CSV',onclick:()=>fi.click()}),fi),
+  sbMsg?el('div',{class:'note',text:sbMsg}):null,lsGet('il_last')?el('div',{class:'meta',text:'Last sync: '+new Date(lsGet('il_last')).toLocaleString()}):null,
+  el('div',{class:'meta',text:'Import accepts the Plans, Money and Pledges CSV files from this app. Existing items are not duplicated.'})));
+ // reflection
+ const cur=S.notes[pk]||{text:''};
+ const ta=el('textarea',{placeholder:'What went well? What did not? What difference did I make? What will I change?',value:cur.text||''});
+ ta.onchange=()=>col('notes').doc(pk).set({text:ta.value,date:a}).catch(()=>{});
+ root.append(el('h2',{text:'My reflection for this period'}),el('div',{class:'card'},ta,el('div',{class:'meta',text:'Saves when you tap outside the box.'})));
+ // remarks
+ const rem=Object.entries(S.notes).filter(([k,n])=>n.text&&k.startsWith('d:')&&k.slice(2)>=a&&k.slice(2)<=b&&R.h!=='day').sort((x,y)=>y[0].localeCompare(x[0])).slice(0,15);
+ if(rem.length)root.append(el('h2',{text:'Daily remarks in this period'}),...rem.map(([k,n])=>el('div',{class:'q'},el('small',{text:fmtD(k.slice(2))+(n.score?' · rated '+n.score+'/5':'')}),n.text)));
+ return root}
+
+function themeBtn(){return el('button',{class:'btn',type:'button','aria-label':'Switch light or dark',text:'◐',onclick:()=>{const dk=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dk?'light':'dark')}})}
+
+async function seed(){
+ const D=(title,area,impact,time,remark)=>({title,horizon:'day',repeat:true,area,impact,time:time||'',due:'',remark:remark||'',done:{},created:todayS(),example:true});
+ const W=(title,area,impact,remark)=>({title,horizon:'week',repeat:true,area,impact,time:'',due:'',remark:remark||'',done:{},created:todayS(),example:true});
+ const Mo=(title,area,impact,remark)=>({title,horizon:'month',repeat:true,area,impact,time:'',due:'',remark:remark||'',done:{},created:todayS(),example:true});
+ const Y=(title,area,impact,remark)=>({title,horizon:'year',repeat:true,area,impact,time:'',due:'',remark:remark||'',done:{},created:todayS(),example:true});
+ const list=[D('Prayer / quiet time','Faith & personal',3,'06:00'),D('Plan the day (top 3 things)','Business (Lausorgo)',4,'07:00'),D('Reach or follow up one farmer, buyer or partner','Farmers & field',4),D('Work on one open application or proposal','Funding & applications',4),D('Record today\'s spending','Money',2,'20:30'),D('Read or learn something useful (20 min)','Learning',2),
+  W('Review the week and plan the next','Business (Lausorgo)',5,'Sunday evening works well.'),W('Field visit or farmer interview','Farmers & field',5),W('Check all open application deadlines','Funding & applications',4),W('Call or visit family','Family & community',3),W('Exercise at least three times','Health',3),
+  Mo('Review spending, giving and savings','Money',4),Mo('Review Lausorgo progress and impact','Business (Lausorgo)',5,'Write the real numbers: farmers reached, deals, money raised.'),Mo('Thank and update supporters and partners','Funding & applications',3),
+  Y('Set my goals for the year','Business (Lausorgo)',5),Y('Yearly impact review: what changed for the farmers I served?','Business (Lausorgo)',5),Y('Yearly money review: income, giving, savings','Money',4)];
+ try{await Promise.all(list.map(p=>col('plans').doc(rid()).set(p)))}catch(e){}}
+
+function render(){
+ if(!db){return}
+ const scroll=window.scrollY;$app.replaceChildren();
+ const v=tab==='today'?vToday():tab==='plans'?vPlans():tab==='money'?vMoney():vReview();
+ $app.append(v);
+ if(tab==='money')$app.append(el('button',{class:'fab',text:'+ Money',onclick:()=>spendSheet()}));
+ else if(tab!=='review')$app.append(el('button',{class:'fab',text:'+ Plan',onclick:()=>planSheet()}));
+ $app.append(el('div',{class:'tabs'},el('div',{},...[['today','Today'],['plans','Plans'],['money','Money'],['review','Review']].map(([k,l])=>el('button',{class:tab===k?'on':'',text:l,onclick:()=>{tab=k;render();window.scrollTo(0,0)}})))));
+ window.scrollTo(0,scroll)}
+
+function msg(t){$app.replaceChildren(el('div',{class:'card empty'},el('h1',{text:'Impact Ledger'}),el('p',{text:t})))}
+const LS='impact-ledger-v1';let store={};try{store=JSON.parse(localStorage.getItem(LS)||'{}')}catch(e){store={}}
+const subs={};
+function persist(){try{localStorage.setItem(LS,JSON.stringify(store))}catch(e){}}
+function fire(name,next){next({docs:Object.entries(store[name]||{}).filter(([,d])=>!d._del).map(([id,d])=>({id,data:()=>d}))})}
+function put(name,id,o){(store[name]=store[name]||{})[id]=o;persist();(subs[name]||[]).forEach(f=>fire(name,f));schedulePush()}
+db={collection(path){const name=path.split('/').pop();return{onSnapshot(next){(subs[name]=subs[name]||[]).push(next);fire(name,next)},doc(id){return{set:async o=>put(name,id,{...o,_u:Date.now()}),delete:async()=>put(name,id,{_del:true,_u:Date.now()})}}}}};
+uid='me';
+dl={save:async({filename,data})=>{const u=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}};
+const handle=(name,fn,quiet)=>col(name).onSnapshot(s=>{fn(s.docs.map(d=>({id:d.id,...d.data()})));if(quiet&&loaded>=4)return;loaded++;render()});
+handle('plans',a=>S.plans=a);
+handle('notes',a=>{S.notes={};a.forEach(n=>S.notes[n.id]=n)},true);
+handle('spend',a=>S.spend=a);
+handle('pledges',a=>S.pledges=a);
+render();
+if(Object.keys(localStorage||{}).some(k=>k.startsWith('sb-')))sbClient().then(()=>{render();if(sbUser)syncNow(true)}).catch(()=>{});
+})();
+</script>
+</body></html>
