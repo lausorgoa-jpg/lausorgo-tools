@@ -29,7 +29,7 @@ h2{font-size:13px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.08e
 .bar.w>i{background:var(--gold)}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}
 .tabs div{display:flex;max-width:720px;width:100%;gap:4px}
-.tabs button{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:13px;padding:8px 4px;border-radius:10px;cursor:pointer;min-height:44px}
+.tabs button{flex:1;padding-left:0!important;padding-right:0!important;font-size:12.5px!important;border:0;background:none;color:var(--mute);font:inherit;font-size:13px;padding:8px 4px;border-radius:10px;cursor:pointer;min-height:44px}
 .tabs button.on{background:var(--acc2);color:var(--acc);font-weight:650}
 .fab{position:fixed;right:max(16px,calc(50% - 344px));bottom:calc(76px + env(safe-area-inset-bottom));background:var(--acc);color:#fff;border:0;border-radius:99px;padding:0 20px;height:48px;font:inherit;font-weight:650;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer;z-index:6}
 .dark-on-fab{color:var(--bg)}
@@ -98,7 +98,7 @@ const GROUPS=[
 const CATG={},CATN={};GROUPS.forEach(G=>G.o.forEach(([v,l])=>{CATG[v]=G.k;CATN[v]=l}));
 const GNAME={};GROUPS.forEach(G=>GNAME[G.k]=G.g);
 
-let dl=null,db=null,uid=null,S={plans:[],notes:{},spend:[],pledges:[]},loaded=0,tab='today',R={h:'week',off:0},M={y:new Date().getFullYear(),m:new Date().getMonth(),yr:false},Pf='all',theme=null;
+let dl=null,db=null,uid=null,S={plans:[],notes:{},spend:[],pledges:[],apps:[],journal:[],people:[],evang:[],books:[],audio:[],biz:[]},loaded=0,tab='today',R={h:'week',off:0},M={y:new Date().getFullYear(),m:new Date().getMonth(),yr:false},Pf='all',theme=null;
 const col=n=>db.collection('data/users/'+uid+'/app/'+n);
 const rid=()=>Math.random().toString(36).slice(2,10);
 
@@ -192,9 +192,42 @@ function pledgeSheet(p){
   extra:()=>el('div',{class:'note',text:'A pledge is a promise, not money moved. When you actually pay, also record it under Giving so your spending stays correct.'}),
   onSave:async v=>{const a=parseFloat(String(v.amount).replace(/,/g,'')),pd=parseFloat(String(v.paid||'0').replace(/,/g,''))||0;
    if(!(a>0)||!(v.who||'').trim())return false;
-   await col('pledges').doc(p.id||rid()).set({dir:v.dir||'give',who:v.who.trim(),amount:a,paid:Math.max(0,pd),due:v.due||'',note:v.note||'',created:p.created||todayS()})},
+   await col('pledges').doc(p.id||rid()).set({dir:v.dir||'give',who:v.who.trim(),amount:a,paid:Math.max(0,pd),due:v.due||'',note:v.note||'',prev:p.prev||0,created:p.created||todayS()})},
   onDelete:p.id?()=>col('pledges').doc(p.id).delete():null});}
 
+const STATUS=['Scouting','Drafting','Submitted','Shortlisted','Awarded','Declined','Closed'];
+const safeUrl=u=>{try{const x=new URL(String(u||'').trim());return x.protocol==='https:'||x.protocol==='http:'?x.href:''}catch(e){return''}};
+function appSheet(a){
+ const isNew=!a;a=a||{name:'',funder:'',status:'Scouting',deadline:'',dtime:'',link:'',link2:'',note:''};
+ openSheet({title:isNew?'New application':'Edit application',data:{...a,checklist:(a.checklist||[]).map(x=>({...x}))},
+  fields:[{k:'name',label:'Application / opportunity',type:'text',ph:'e.g. USPF Changemaker Challenge'},
+   {k:'funder',label:'Funder / organiser',type:'text'},
+   {k:'status',label:'Status',type:'select',opts:STATUS.map(x=>[x,x])},
+   {k:'deadline',label:'Deadline date',type:'date'},
+   {k:'dtime',label:'Deadline time (and note the time zone in the remark)',type:'time'},
+   {k:'link',label:'Application link',type:'text',ph:'https://…'},
+   {k:'link2',label:'Other link (guidelines, portal, my draft)',type:'text',ph:'https://…'},
+   {k:'note',label:'Remark',type:'area',ph:'Requirements, what is left, contacts, outcome…'}],
+  extra:v=>{const box=el('div',{});const inp=el('input',{type:'text',placeholder:'Add a step, e.g. Upload concept note',style:'margin-top:6px'});
+   const draw=()=>{box.replaceChildren(el('label',{text:'Steps to finish ('+v.checklist.filter(x=>x.d).length+'/'+v.checklist.length+')'}),...v.checklist.map((x,i)=>el('div',{class:'row'+(x.d?' done':''),style:'cursor:default'},el('button',{class:'check',type:'button','aria-label':'Toggle step',text:x.d?'✓':'',onclick:()=>{x.d=!x.d;draw()}}),el('div',{class:'grow title',text:x.t}),el('button',{class:'btn',type:'button','aria-label':'Remove step',text:'×',onclick:()=>{v.checklist.splice(i,1);draw()}}))),
+    el('div',{class:'acts',style:'margin-top:4px'},inp,el('button',{class:'btn',type:'button',text:'Add step',onclick:()=>{const t=inp.value.trim();if(t){v.checklist.push({t:t.slice(0,160),d:false});draw()}}})),el('div',{class:'note',text:'Never store passwords here. Keep only links and notes.'}))};draw();return box},
+  onSave:async v=>{if(!(v.name||'').trim())return false;
+   const l1=(v.link||'').trim(),l2=(v.link2||'').trim();if((l1&&!safeUrl(l1))||(l2&&!safeUrl(l2)))throw new Error('A link must start with https://');
+   await col('apps').doc(a.id||rid()).set({name:v.name.trim(),funder:v.funder||'',status:v.status||'Scouting',deadline:v.deadline||'',dtime:v.dtime||'',link:l1,link2:l2,note:v.note||'',checklist:(v.checklist||[]).slice(0,40),created:a.created||todayS()})},
+  onDelete:a.id?()=>col('apps').doc(a.id).delete():null});}
+function journalSheet(j){
+ const isNew=!j;j=j||{date:todayS(),mood:3,title:'',story:'',people:'',lesson:''};
+ openSheet({title:isNew?'New journal entry':'Edit entry',data:j,
+  fields:[{k:'date',label:'Date',type:'date'},
+   {k:'title',label:'Headline (optional)',type:'text',ph:'e.g. Met a maize farmer in Billiri'},
+   {k:'story',label:'What happened — my experience',type:'area',ph:'Write freely…'},
+   {k:'people',label:'Who I met / encounters',type:'area',ph:'Names, roles, what we discussed, follow-up'},
+   {k:'lesson',label:'What I learned / will do next',type:'area'},
+   {k:'mood',label:'How the day felt (1 hard – 5 great)',type:'seg',opts:[1,2,3,4,5].map(n=>[n,String(n)])}],
+  extra:()=>el('div',{class:'note',text:'Be careful with other people’s private details. Sync stores this in your own Supabase.'}),
+  onSave:async v=>{if(!((v.story||'').trim()||(v.title||'').trim()||(v.people||'').trim()))return false;
+   await col('journal').doc(j.id||rid()).set({date:v.date||todayS(),title:v.title||'',story:v.story||'',people:v.people||'',lesson:v.lesson||'',mood:+v.mood||3,created:j.created||todayS()})},
+  onDelete:j.id?()=>col('journal').doc(j.id).delete():null});}
 /* ---------- csv ---------- */
 function csvCell(v){if(v==null)return'';if(typeof v==='number')return String(v);let t=String(v);if(/^[=+\-@\t\r]/.test(t))t="'"+t;return/[",\n\r]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t}
 function toCsv(head,rows){return'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')}
@@ -202,6 +235,13 @@ const EXPORTS=[
  ['Plans','plans',()=>toCsv(['Title','Time frame','Repeats','Area','Impact (1-5)','Date','Time','Remark','Times completed'],S.plans.map(p=>[p.title,p.horizon,p.repeat?'yes':'no',p.area,p.impact,p.due,p.time,p.remark,Object.keys(p.done||{}).length]))],
  ['Money','money',()=>toCsv(['Date','Group','Category','Amount (NGN)','Remark'],S.spend.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(x=>[x.date,GNAME[CATG[x.cat]]||'',CATN[x.cat]||x.cat,x.amount,x.note]))],
  ['Pledges','pledges',()=>toCsv(['Type','Who / what for','Pledged (NGN)','Paid or received (NGN)','Outstanding (NGN)','Due','Remark'],S.pledges.map(x=>[x.dir==='give'?'I pledged':'Promised to me',x.who,x.amount,x.paid||0,Math.max(0,x.amount-(x.paid||0)),x.due,x.note]))],
+ ['Applications','applications',()=>toCsv(['Application','Funder','Status','Deadline','Time','Link','Other link','Remark'],S.apps.map(x=>[x.name,x.funder,x.status,x.deadline,x.dtime,x.link,x.link2,x.note]))],
+ ['Journal','journal',()=>toCsv(['Date','Headline','Experience','People met','Learned / next','Mood'],S.journal.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(x=>[x.date,x.title,x.story,x.people,x.lesson,x.mood]))],
+ ['Contacts','contacts',()=>toCsv(['Name','Phone','Group','Every (days)','Last called','Remark'],S.people.map(x=>[x.name,x.phone,x.group,x.freq,lastOf(x),x.note]))],
+ ['Evangelism','evangelism',()=>toCsv(['Date','Who','Place','Reached','Response','Follow-up','Remark'],S.evang.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(x=>[x.date,x.who,x.place,x.count,(RESP.find(r=>r[0]===x.resp)||[0,x.resp])[1],x.follow,x.note]))],
+ ['Books','books',()=>toCsv(['Title','Author','Status','Pages read','Total pages','Rating','Finished','Notes'],S.books.map(x=>[x.title,x.author,(BST.find(r=>r[0]===x.status)||[0,x.status])[1],x.read,x.total,x.rating,x.finished,x.note]))],
+ ['Playlist','playlist',()=>toCsv(['Title','By','Category','Status','Link','Note'],S.audio.map(x=>[x.title,x.by,x.cat,(AST.find(r=>r[0]===x.status)||[0,x.status])[1],x.link,x.note]))],
+ ['Companies','companies',()=>toCsv(['Company','Type','Item','Value','Unit','Date','Done','Remark'],S.biz.map(x=>[CO[x.co]||x.co,{ms:'Milestone',up:'Progress note',met:'Number'}[x.kind]||x.kind,x.title,x.value,x.unit,x.kind==='ms'?(x.due||''):x.date,x.done?'yes':'',x.note]))],
  ['Remarks & ratings','remarks',()=>toCsv(['Period','Rating','Remark'],Object.entries(S.notes).filter(([k,n])=>n.text||n.score).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,n])=>[k.replace(/^d:/,'Day ').replace(/^w:/,'Week of ').replace(/^m:/,'Month ').replace(/^y:/,'Year '),n.score||'',n.text]))]];
 let exportMsg='';
 /* ---------- Supabase backup (manual, private rows) ---------- */
@@ -214,7 +254,7 @@ async function sbClient(){if(sbc)return sbc;await sbLoad();sbc=window.supabase.c
 function sbSignIn(){openSheet({title:'Sign in to my Supabase',data:{email:'',pw:''},fields:[{k:'email',label:'Email (the user you created in Supabase)',type:'email'},{k:'pw',label:'Password',type:'password'}],
  extra:()=>el('div',{class:'note',text:'Your password goes only to Supabase and is not stored by this page.'}),
  onSave:async v=>{const c=await sbClient();const{data,error}=await c.auth.signInWithPassword({email:(v.email||'').trim(),password:v.pw||''});if(error)throw new Error(error.message);sbUser=data.user;sbMsg='Signed in.';setTimeout(()=>syncNow(false),200)}})}
-const KINDS=['plans','notes','spend','pledges'];
+const KINDS=['plans','notes','spend','pledges','apps','journal','people','evang','books','audio','biz'];
 let syncT=null;
 function schedulePush(){if(!sbUser)return;clearTimeout(syncT);syncT=setTimeout(()=>syncNow(true),2000)}
 async function syncNow(quiet){if(sbBusy)return;sbBusy=true;if(!quiet){sbMsg='Syncing…';render()}
@@ -238,6 +278,8 @@ async function importCsv(file){try{const rows=parseCsv(await file.text());const 
  if(h[0]==='Title'&&h[1]==='Time frame'){for(const r of rows){const p={title:unq(r[0]),horizon:r[1],repeat:r[2]==='yes',area:r[3]||AREAS[0],impact:+r[4]||3,due:r[5]||'',time:r[6]||'',remark:unq(r[7]),done:{},created:todayS()};if(!p.title||!['day','week','month','year'].includes(p.horizon)||exists('plans',x=>x.title===p.title&&x.horizon===p.horizon))continue;await col('plans').doc(rid()).set(p);n++}}
  else if(h[0]==='Date'&&h[2]==='Category'){for(const r of rows){const a=parseFloat(r[3]);const cat=byName[r[2]]||'other';if(!(a>0)||!r[0])continue;if(exists('spend',x=>x.date===r[0]&&x.cat===cat&&x.amount===a&&(x.note||'')===unq(r[4])))continue;await col('spend').doc(rid()).set({date:r[0],cat,amount:a,note:unq(r[4])});n++}}
  else if(h[0]==='Type'&&h[1]==='Who / what for'){for(const r of rows){const a=parseFloat(r[2]);if(!(a>0)||!r[1])continue;if(exists('pledges',x=>x.who===unq(r[1])&&x.amount===a))continue;await col('pledges').doc(rid()).set({dir:r[0]==='I pledged'?'give':'receive',who:unq(r[1]),amount:a,paid:parseFloat(r[3])||0,due:r[5]||'',note:unq(r[6]),created:todayS()});n++}}
+ else if(h[0]==='Application'&&h[1]==='Funder'){for(const r of rows){const nm=unq(r[0]);if(!nm||exists('apps',x=>x.name===nm&&x.deadline===r[3]))continue;await col('apps').doc(rid()).set({name:nm,funder:unq(r[1]),status:STATUS.includes(r[2])?r[2]:'Scouting',deadline:r[3]||'',dtime:r[4]||'',link:safeUrl(r[5]),link2:safeUrl(r[6]),note:unq(r[7]),created:todayS()});n++}}
+ else if(h[0]==='Date'&&h[1]==='Headline'){for(const r of rows){if(!r[0])continue;if(exists('journal',x=>x.date===r[0]&&x.title===unq(r[1])&&x.story===unq(r[2])))continue;await col('journal').doc(rid()).set({date:r[0],title:unq(r[1]),story:unq(r[2]),people:unq(r[3]),lesson:unq(r[4]),mood:+r[5]||3,created:todayS()});n++}}
  else throw new Error('This is not a Plans, Money or Pledges file from the ledger.');
  sbMsg='Imported '+n+' new item'+(n===1?'':'s')+'.'}catch(e){sbMsg='Import failed: '+(e.message||e)}render()}
 async function doExport(name,fn,node){
@@ -267,6 +309,7 @@ function vToday(){
   items.sort((a,b)=>(isDone(a.p,a.v.key)-isDone(b.p,b.v.key))||(a.p.time||'99').localeCompare(b.p.time||'99'));
   const d=items.filter(x=>isDone(x.p,x.v.key)).length;
   root.append(el('h2',{text:HNAME[h]+'  ·  '+d+'/'+items.length}),el('div',{class:'card'},...items.map(x=>planRow(x.p,x.v.key,x.v.overdue))))});
+ if(S.people.length){const N=sessN(),dn=S.people.filter(p=>lastOf(p)===t).length;root.append(el('h2',{text:'Calls'}),el('div',{class:'card'},el('div',{class:'line'},el('span',{text:'Call session today'}),el('span',{text:dn+' of '+N})),bar(dn/N*100),el('div',{class:'acts'},el('button',{class:'btn',type:'button',text:'Open call list',onclick:()=>{tab='work';W='calls';render();window.scrollTo(0,0)}}))))}
  // journal
  const n=S.notes['d:'+t]||{text:'',score:0};
  const ta=el('textarea',{placeholder:'How did today go? What did I learn? What will I do differently?',value:n.text||''});
@@ -283,21 +326,200 @@ function vPlans(){
  HZ.forEach(([h,l])=>{if(Pf!=='all'&&Pf!==h)return;const items=S.plans.filter(p=>p.horizon===h);
   root.append(el('h2',{text:l+' ('+items.length+')'}));
   if(!items.length){root.append(el('div',{class:'card empty',text:'No '+l.toLowerCase()+' plans yet.'}));return}
-  root.append(el('div',{class:'card'},...items.map(p=>el('div',{class:'row',onclick:()=>planSheet(p)},el('div',{class:'grow'},el('div',{class:'title',text:p.title}),el('div',{class:'meta'},el('span',{class:'chip',text:p.repeat?'repeats':'once'+(p.due?' · '+fmtD(p.due):'')}),el('span',{class:'chip g',text:p.area}),dots(p.impact),p.example?el('span',{class:'chip g',text:'example'}):null)),
-   el('a',{class:'btn',href:calLink(p),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation(),text:'Calendar ↗'}))))) });
+  root.append(el('div',{class:'card'},...items.map(p=>{const pk=p.repeat?keyFor(p.horizon,new Date()):'once',pd=isDone(p,pk);return el('div',{class:'row'+(pd?' done':''),onclick:()=>planSheet(p)},el('button',{class:'check',type:'button','aria-label':pd?'Mark not done':'Mark done',text:pd?'✓':'',onclick:e=>{e.stopPropagation();toggle(p,pk).catch(()=>{})}}),el('div',{class:'grow'},el('div',{class:'title',text:p.title}),el('div',{class:'meta'},el('span',{class:'chip',text:p.repeat?'repeats':'once'+(p.due?' · '+fmtD(p.due):'')}),el('span',{class:'chip g',text:p.area}),dots(p.impact),p.example?el('span',{class:'chip g',text:'example'}):null)),
+   el('a',{class:'btn',href:calLink(p),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation(),text:'Calendar ↗'}))})) ) });
  root.append(el('div',{class:'note',text:'Google Reminders cannot be linked automatically from a web page. “Calendar ↗” opens Google Calendar with the plan pre-filled (and repeating). Save it there and your phone will notify you.'}));
  return root}
+
+function vApps(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Applications'}),el('div',{class:'sub',text:'Deadlines, status and links'})),themeBtn()));
+ const t=todayS(),open=S.apps.filter(a=>!['Awarded','Declined','Closed'].includes(a.status)).sort((a,b)=>(a.deadline||'9').localeCompare(b.deadline||'9')),closed=S.apps.filter(a=>['Awarded','Declined','Closed'].includes(a.status));
+ const days=a=>a.deadline?Math.round((parse(a.deadline)-parse(t))/864e5):null;
+ const row=a=>{const d=days(a),u1=safeUrl(a.link),u2=safeUrl(a.link2);
+  const cd=d==null?null:d<0?el('span',{class:'chip w',text:'deadline passed'}):el('span',{class:'chip'+(d<=3?' w':''),text:d===0?'due today':d===1?'1 day left':d+' days left'});
+  const sub=['Submitted','Shortlisted','Awarded'].includes(a.status),cl=a.checklist||[];
+  return el('div',{class:'row'+(sub?' done':''),onclick:()=>appSheet(a)},el('button',{class:'check',type:'button','aria-label':sub?'Mark not submitted':'Mark submitted',text:sub?'✓':'',onclick:e=>{e.stopPropagation();const{id,...o}=a;col('apps').doc(a.id).set({...o,status:sub?'Drafting':'Submitted'}).catch(()=>{})}}),el('div',{class:'grow'},el('div',{class:'title',text:a.name}),
+   el('div',{class:'meta'},el('span',{class:'chip g',text:a.status}),cl.length?el('span',{class:'chip',text:cl.filter(x=>x.d).length+'/'+cl.length+' steps'}):null,a.funder?el('span',{text:a.funder}):null,a.deadline?el('span',{text:fmtD(a.deadline)+(a.dtime?' · '+a.dtime:'')}):null,cd),
+   el('div',{class:'meta'},u1?el('a',{class:'btn',href:u1,target:'_blank',rel:'noopener noreferrer',onclick:e=>e.stopPropagation(),text:'Application ↗'}):null,u2?el('a',{class:'btn',href:u2,target:'_blank',rel:'noopener noreferrer',onclick:e=>e.stopPropagation(),text:'Other link ↗'}):null,
+    a.deadline?el('a',{class:'btn',href:calLink({title:'Deadline: '+a.name,due:a.deadline,time:a.dtime,remark:a.note,repeat:false}),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation(),text:'Calendar ↗'}):null),
+   a.note?el('div',{class:'meta',text:a.note.length>80?a.note.slice(0,80)+'…':a.note}):null))};
+ root.append(el('h2',{text:'Open ('+open.length+')'}));
+ root.append(open.length?el('div',{class:'card'},...open.map(row)):el('div',{class:'card empty',text:'No open applications. Tap “+ Application”.'}));
+ if(closed.length)root.append(el('h2',{text:'Finished ('+closed.length+')'}),el('div',{class:'card'},...closed.map(row)));
+ return root}
+let JQ='';
+function vJournal(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Journal'}),el('div',{class:'sub',text:'My experiences and encounters'})),themeBtn()));
+ const list=el('div',{});
+ const draw=()=>{const q=JQ.trim().toLowerCase();const items=S.journal.filter(j=>!q||[j.title,j.story,j.people,j.lesson].join(' ').toLowerCase().includes(q)).sort((a,b)=>b.date.localeCompare(a.date)||(b.created||'').localeCompare(a.created||''));
+  list.replaceChildren(items.length?el('div',{class:'card'},...items.map(j=>el('div',{class:'row',onclick:()=>journalSheet(j)},el('div',{class:'grow'},el('div',{class:'title',text:j.title||(j.story||'').slice(0,60)||'Entry'}),
+   el('div',{class:'meta'},el('span',{text:fmtD(j.date)}),el('span',{class:'dots',text:'●'.repeat(j.mood||3)}),j.people?el('span',{class:'chip g',text:'people'}):null,j.lesson?el('span',{class:'chip',text:'lesson'}):null),
+   j.story?el('div',{class:'meta',text:j.story.length>110?j.story.slice(0,110)+'…':j.story}):null)))):el('div',{class:'card empty',text:S.journal.length?'No entries match your search.':'No entries yet. Tap “+ Entry” to write about today.'}))};
+ root.append(el('input',{type:'search',placeholder:'Search my journal…',value:JQ,oninput:e=>{JQ=e.target.value;draw()}}),list);draw();return root}
+/* ===== calls, evangelism, books, audio, companies ===== */
+const GROUPS_P=['Family','Friends','Church','Business','Farmers','Buyers','Mentors','Funders','Other'];
+const CO={crest:'Lausorgo Crest Global Nigeria Limited',agric:'Lausorgo Agric Innovation'};
+let W='apps',Lf='journal',CoSel='crest',PQ='',PG='all',AF='all',BF='all';
+const daysAgo=s=>s?Math.round((parse(todayS())-parse(s))/864e5):null;
+const subNav=(cur,list,set)=>el('div',{class:'seg',style:'margin-bottom:10px'},...list.map(([k,l])=>el('button',{class:cur===k?'on':'',type:'button',text:l,onclick:()=>{set(k);render()}})));
+const waLink=ph=>{let d=String(ph||'').replace(/\D/g,'');if(!d)return'';if(d.length===11&&d[0]==='0')d='234'+d.slice(1);return'https://wa.me/'+d};
+const telLink=ph=>{const d=String(ph||'').replace(/[^\d+]/g,'');return d?'tel:'+d:''};
+const lastOf=p=>((p.log||[]).map(x=>x.d).sort().pop())||'';
+const sessN=()=>+(lsGet('il_sess')||5);
+
+function personSheet(p){
+ const isNew=!p;p=p||{name:'',phone:'',group:'Friends',freq:30,note:''};
+ openSheet({title:isNew?'New contact':'Edit contact',data:{...p,freq:String(p.freq||30)},
+  fields:[{k:'name',label:'Name',type:'text'},{k:'phone',label:'Phone (with country code if abroad)',type:'text',ph:'0803… or +234…'},
+   {k:'group',label:'Group',type:'select',opts:GROUPS_P.map(g=>[g,g])},
+   {k:'freq',label:'How often I want to reach out',type:'seg',opts:[['7','Weekly'],['14','2 weeks'],['30','Monthly'],['90','3 months']]},
+   {k:'note',label:'Remark (what to ask about, prayer points, follow-up)',type:'area'}],
+  extra:()=>el('div',{class:'note',text:'Contacts are stored on this device and in your own Supabase when you sync. Keep them private.'}),
+  onSave:async v=>{if(!(v.name||'').trim())return false;await col('people').doc(p.id||rid()).set({name:v.name.trim(),phone:(v.phone||'').trim().slice(0,30),group:v.group||'Other',freq:+v.freq||30,note:v.note||'',log:p.log||[],created:p.created||todayS()})},
+  onDelete:p.id?()=>col('people').doc(p.id).delete():null,
+  extra2:null});}
+function callLogSheet(p){
+ openSheet({title:'Call: '+p.name,data:{date:todayS(),note:''},fields:[{k:'date',label:'Date',type:'date'},{k:'note',label:'How did it go? What did we talk about?',type:'area'}],
+  onSave:async v=>{const{id,...o}=p;const log=[...(o.log||[]),{d:v.date||todayS(),n:v.note||''}].slice(-40);await col('people').doc(p.id).set({...o,log})}});}
+function pasteSheet(){
+ openSheet({title:'Add many contacts',data:{group:'Friends',text:''},fields:[{k:'group',label:'Group for all of them',type:'select',opts:GROUPS_P.map(g=>[g,g])},{k:'text',label:'One person per line: Name, phone',type:'area',ph:'Samaila Simon, 0803…\nMalam Audu, 0806…'}],
+  onSave:async v=>{const lines=(v.text||'').split('\n').map(x=>x.trim()).filter(Boolean).slice(0,200);if(!lines.length)return false;
+   for(const ln of lines){const i=ln.lastIndexOf(',');const name=(i>0?ln.slice(0,i):ln).trim(),phone=i>0?ln.slice(i+1).trim():'';if(name)await col('people').doc(rid()).set({name:name.slice(0,100),phone:phone.slice(0,30),group:v.group,freq:30,note:'',log:[],created:todayS()})}}});}
+function callRow(p,inSession){
+ const t=todayS(),last=lastOf(p),called=last===t,da=daysAgo(last),over=last?da-(p.freq||30):999;
+ const tl=telLink(p.phone),wl=waLink(p.phone);
+ return el('div',{class:'row'+(called?' done':''),onclick:()=>personSheet(p)},
+  el('button',{class:'check',type:'button','aria-label':called?'Undo call':'Mark called',text:called?'✓':'',onclick:e=>{e.stopPropagation();const{id,...o}=p;if(called)col('people').doc(p.id).set({...o,log:(o.log||[]).filter(x=>x.d!==t)});else callLogSheet(p)}}),
+  el('div',{class:'grow'},el('div',{class:'title',text:p.name}),
+   el('div',{class:'meta'},el('span',{class:'chip g',text:p.group}),el('span',{text:last?(da===0?'called today':da+' days ago'):'never called'}),!called&&over>=0?el('span',{class:'chip w',text:last?'due':'new'}):null),
+   el('div',{class:'meta'},tl?el('a',{class:'btn',href:tl,onclick:e=>e.stopPropagation(),text:'Call ↗'}):null,wl?el('a',{class:'btn',href:wl,target:'_blank',rel:'noopener noreferrer',onclick:e=>e.stopPropagation(),text:'WhatsApp ↗'}):null,
+    el('button',{class:'btn',type:'button',text:'Log call',onclick:e=>{e.stopPropagation();callLogSheet(p)}})),
+   p.note?el('div',{class:'meta',text:p.note.length>80?p.note.slice(0,80)+'…':p.note}):null))}
+function vCalls(){
+ const root=el('div',{}),t=todayS(),N=sessN();
+ root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Calls'}),el('div',{class:'sub',text:'Stay close to the people who matter'})),themeBtn()));
+ if(!S.people.length){root.append(el('div',{class:'card empty'},el('p',{text:'No contacts yet. Add a few people you want to reach out to regularly.'}),el('div',{class:'acts',style:'justify-content:center'},el('button',{class:'btn p',text:'+ Contact',onclick:()=>personSheet()}),el('button',{class:'btn',text:'Paste a list',onclick:pasteSheet}))));return root}
+ const doneToday=S.people.filter(p=>lastOf(p)===t),score=p=>{const l=lastOf(p);return l?daysAgo(l)-(p.freq||30):999};
+ const due=S.people.filter(p=>lastOf(p)!==t).sort((a,b)=>score(b)-score(a)).slice(0,Math.max(0,N-doneToday.length));
+ const sess=[...doneToday,...due].slice(0,Math.max(N,doneToday.length));
+ root.append(el('h2',{text:"Today's call session  ·  "+doneToday.length+'/'+N}),el('div',{class:'card'},bar(doneToday.length/N*100),
+  el('div',{class:'seg',style:'margin:8px 0'},...[3,5,10].map(n=>el('button',{type:'button',class:N===n?'on':'',text:n+' calls',onclick:()=>{lsSet('il_sess',String(n));render()}}))),
+  ...sess.map(p=>callRow(p,true)),!sess.length?el('div',{class:'empty',text:'No one is due. Well done.'}):null));
+ const q=PQ.trim().toLowerCase();const list=el('div',{});
+ const draw=()=>{const items=S.people.filter(p=>(PG==='all'||p.group===PG)&&(!q||(PQ.trim().toLowerCase()&&(p.name+' '+p.note).toLowerCase().includes(PQ.trim().toLowerCase()))||!PQ.trim())).sort((a,b)=>a.name.localeCompare(b.name));
+  list.replaceChildren(items.length?el('div',{class:'card'},...items.map(p=>callRow(p,false))):el('div',{class:'card empty',text:'No contacts match.'}))};
+ root.append(el('h2',{text:'All contacts ('+S.people.length+')'}),el('div',{class:'seg',style:'margin-bottom:8px'},...['all',...GROUPS_P].map(g=>el('button',{type:'button',style:'flex:none;padding:0 12px',class:PG===g?'on':'',text:g==='all'?'All':g,onclick:()=>{PG=g;render()}}))),
+  el('input',{type:'search',placeholder:'Search contacts…',value:PQ,oninput:e=>{PQ=e.target.value;draw()}}),list,el('div',{class:'acts'},el('button',{class:'btn',text:'Paste a list',onclick:pasteSheet})));draw();return root}
+
+/* evangelism */
+const RESP=[['shared','Shared the gospel'],['prayed','Prayed with'],['interested','Interested'],['invited','Invited to church'],['decision','Decision for Christ']];
+function evangSheet(e){
+ const isNew=!e;e=e||{date:todayS(),who:'',place:'',count:'1',resp:'shared',follow:'',fdone:false,note:''};
+ openSheet({title:isNew?'New outreach':'Edit outreach',data:{...e,count:String(e.count||1)},
+  fields:[{k:'date',label:'Date',type:'date'},{k:'who',label:'Who I met (name or description)',type:'text',ph:'e.g. Taxi driver, Malam Audu'},{k:'place',label:'Place',type:'text'},
+   {k:'count',label:'How many people reached',type:'number'},{k:'resp',label:'Response',type:'select',opts:RESP},
+   {k:'follow',label:'Follow-up date (optional)',type:'date'},{k:'note',label:'Remark / prayer points',type:'area'}],
+  extra:()=>el('div',{class:'note',text:'Keep other people’s details respectful and minimal.'}),
+  onSave:async v=>{if(!(v.who||'').trim()&&!(v.note||'').trim())return false;await col('evang').doc(e.id||rid()).set({date:v.date||todayS(),who:v.who||'',place:v.place||'',count:Math.max(1,parseInt(v.count)||1),resp:v.resp||'shared',follow:v.follow||'',fdone:!!e.fdone,note:v.note||'',created:e.created||todayS()})},
+  onDelete:e.id?()=>col('evang').doc(e.id).delete():null});}
+function vEvang(){
+ const root=el('div',{}),t=todayS(),pre=t.slice(0,7);
+ root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Evangelism'}),el('div',{class:'sub',text:'Reaching people, following up'})),themeBtn()));
+ const m=S.evang.filter(x=>(x.date||'').startsWith(pre)),reached=m.reduce((a,x)=>a+(x.count||1),0),dec=m.filter(x=>x.resp==='decision').reduce((a,x)=>a+(x.count||1),0);
+ const fu=S.evang.filter(x=>x.follow&&!x.fdone).sort((a,b)=>a.follow.localeCompare(b.follow));
+ root.append(el('div',{class:'tiles'},el('div',{class:'tile in'},el('small',{text:'Reached this month'}),el('b',{text:String(reached)})),el('div',{class:'tile'},el('small',{text:'Decisions this month'}),el('b',{text:String(dec)})),el('div',{class:'tile'},el('small',{text:'Outreaches this month'}),el('b',{text:String(m.length)})),el('div',{class:'tile out'},el('small',{text:'Follow-ups waiting'}),el('b',{text:String(fu.length)}))));
+ if(fu.length)root.append(el('h2',{text:'Follow up'}),el('div',{class:'card'},...fu.map(x=>el('div',{class:'row',onclick:()=>evangSheet(x)},el('button',{class:'check',type:'button','aria-label':'Mark followed up',onclick:ev=>{ev.stopPropagation();const{id,...o}=x;col('evang').doc(x.id).set({...o,fdone:true})}}),el('div',{class:'grow'},el('div',{class:'title',text:x.who||'Follow-up'}),el('div',{class:'meta'},el('span',{text:fmtD(x.follow)}),x.follow<t?el('span',{class:'chip w',text:'overdue'}):null,x.note?el('span',{text:x.note.length>50?x.note.slice(0,50)+'…':x.note}):null))))));
+ root.append(el('h2',{text:'All outreaches ('+S.evang.length+')'}));
+ const items=S.evang.slice().sort((a,b)=>b.date.localeCompare(a.date));
+ root.append(items.length?el('div',{class:'card'},...items.slice(0,60).map(x=>el('div',{class:'row',onclick:()=>evangSheet(x)},el('div',{class:'grow'},el('div',{class:'title',text:(x.who||'Outreach')+(x.place?' · '+x.place:'')}),el('div',{class:'meta'},el('span',{text:fmtD(x.date)}),el('span',{class:'chip',text:(RESP.find(r=>r[0]===x.resp)||[0,'Shared'])[1]}),el('span',{text:(x.count||1)+' reached'})))))):el('div',{class:'card empty',text:'Nothing logged yet. Tap “+ Outreach” after you share.'}));
+ return root}
+
+/* books */
+const BST=[['to','To read'],['now','Reading'],['done','Finished']];
+function bookSheet(b){
+ const isNew=!b;b=b||{title:'',author:'',status:'to',total:'',read:'',rating:0,link:'',note:''};
+ openSheet({title:isNew?'New book':'Edit book',data:{...b,total:String(b.total||''),read:String(b.read||'')},
+  fields:[{k:'title',label:'Title',type:'text'},{k:'author',label:'Author',type:'text'},{k:'status',label:'Status',type:'seg',opts:BST},
+   {k:'total',label:'Total pages (optional)',type:'number'},{k:'read',label:'Pages read so far',type:'number'},
+   {k:'rating',label:'My rating (when finished)',type:'seg',opts:[1,2,3,4,5].map(n=>[n,String(n)])},
+   {k:'link',label:'Link (where to read or buy, optional)',type:'text',ph:'https://…'},{k:'note',label:'Key lessons / notes',type:'area'}],
+  onSave:async v=>{if(!(v.title||'').trim())return false;const l=(v.link||'').trim();if(l&&!safeUrl(l))throw new Error('A link must start with https://');
+   const tot=parseInt(v.total)||0;let rd=parseInt(v.read)||0;if(v.status==='done'&&tot)rd=tot;
+   await col('books').doc(b.id||rid()).set({title:v.title.trim(),author:v.author||'',status:v.status,total:tot,read:rd,rating:+v.rating||0,link:l,note:v.note||'',finished:v.status==='done'?(b.finished||todayS()):'',created:b.created||todayS()})},
+  onDelete:b.id?()=>col('books').doc(b.id).delete():null});}
+function vBooks(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Books'}),el('div',{class:'sub',text:'My reading list'})),themeBtn()));
+ const yr=todayS().slice(0,4),fin=S.books.filter(b=>b.status==='done'&&(b.finished||'').startsWith(yr)).length;
+ root.append(el('div',{class:'tiles'},el('div',{class:'tile in'},el('small',{text:'Finished this year'}),el('b',{text:String(fin)})),el('div',{class:'tile'},el('small',{text:'Reading now'}),el('b',{text:String(S.books.filter(b=>b.status==='now').length)}))));
+ root.append(el('div',{class:'seg',style:'margin:10px 0'},...[['all','All'],...BST].map(([k,l])=>el('button',{type:'button',class:BF===k?'on':'',text:l,onclick:()=>{BF=k;render()}}))));
+ const items=S.books.filter(b=>BF==='all'||b.status===BF).sort((a,b)=>BST.findIndex(x=>x[0]===a.status)-BST.findIndex(x=>x[0]===b.status)||a.title.localeCompare(b.title));
+ root.append(items.length?el('div',{class:'card'},...items.map(b=>{const u=safeUrl(b.link),done=b.status==='done';return el('div',{class:'row'+(done?' done':''),onclick:()=>bookSheet(b)},
+  el('button',{class:'check',type:'button','aria-label':done?'Mark not finished':'Mark finished',text:done?'✓':'',onclick:e=>{e.stopPropagation();const{id,...o}=b;col('books').doc(b.id).set(done?{...o,status:'now',finished:''}:{...o,status:'done',read:o.total||o.read,finished:todayS()})}}),
+  el('div',{class:'grow'},el('div',{class:'title',text:b.title}),el('div',{class:'meta'},b.author?el('span',{text:b.author}):null,el('span',{class:'chip g',text:(BST.find(x=>x[0]===b.status)||[0,''])[1]}),done&&b.rating?el('span',{class:'dots',text:'●'.repeat(b.rating)}):null,u?el('a',{class:'btn',href:u,target:'_blank',rel:'noopener noreferrer',onclick:e=>e.stopPropagation(),text:'Open ↗'}):null),
+   b.total&&b.status!=='to'?[bar((b.read||0)/b.total*100),el('div',{class:'meta',text:(b.read||0)+' of '+b.total+' pages'})]:null))})):el('div',{class:'card empty',text:'No books yet. Tap “+ Book”.'}));
+ return root}
+
+/* audio */
+const ACAT=['Sermon','Worship','Podcast','Learning','Other'],AST=[['to','Up next'],['now','Listening'],['done','Heard']];
+function audioSheet(a){
+ const isNew=!a;a=a||{title:'',by:'',cat:'Sermon',link:'',status:'to',note:''};
+ openSheet({title:isNew?'Add to playlist':'Edit audio',data:a,
+  fields:[{k:'title',label:'Title',type:'text'},{k:'by',label:'Speaker / artist / show',type:'text'},{k:'cat',label:'Category',type:'select',opts:ACAT.map(c=>[c,c])},
+   {k:'link',label:'Link to listen (YouTube, Spotify, Audiomack, website…)',type:'text',ph:'https://…'},{k:'status',label:'Status',type:'seg',opts:AST},{k:'note',label:'Why I want to listen / what I learned',type:'area'}],
+  extra:()=>el('div',{class:'note',text:'This stores links, not audio files. Tapping Play opens the link in your player or browser.'}),
+  onSave:async v=>{if(!(v.title||'').trim())return false;const l=(v.link||'').trim();if(l&&!safeUrl(l))throw new Error('A link must start with https://');
+   await col('audio').doc(a.id||rid()).set({title:v.title.trim(),by:v.by||'',cat:v.cat||'Other',link:l,status:v.status||'to',note:v.note||'',created:a.created||todayS()})},
+  onDelete:a.id?()=>col('audio').doc(a.id).delete():null});}
+function vAudio(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Playlist'}),el('div',{class:'sub',text:'Sermons, worship and learning to listen to'})),themeBtn()));
+ root.append(el('div',{class:'seg',style:'margin:10px 0'},...[['all','All'],...AST].map(([k,l])=>el('button',{type:'button',class:AF===k?'on':'',text:l,onclick:()=>{AF=k;render()}}))));
+ const items=S.audio.filter(a=>AF==='all'||a.status===AF).sort((a,b)=>AST.findIndex(x=>x[0]===a.status)-AST.findIndex(x=>x[0]===b.status)||(a.created||'').localeCompare(b.created||''));
+ root.append(items.length?el('div',{class:'card'},...items.map(a=>{const u=safeUrl(a.link),done=a.status==='done';return el('div',{class:'row'+(done?' done':''),onclick:()=>audioSheet(a)},
+  el('button',{class:'check',type:'button','aria-label':done?'Mark not heard':'Mark heard',text:done?'✓':'',onclick:e=>{e.stopPropagation();const{id,...o}=a;col('audio').doc(a.id).set({...o,status:done?'to':'done'})}}),
+  el('div',{class:'grow'},el('div',{class:'title',text:a.title}),el('div',{class:'meta'},a.by?el('span',{text:a.by}):null,el('span',{class:'chip g',text:a.cat}),el('span',{class:'chip'+(a.status==='now'?' w':''),text:(AST.find(x=>x[0]===a.status)||[0,''])[1]}),u?el('a',{class:'btn',href:u,target:'_blank',rel:'noopener noreferrer',onclick:e=>e.stopPropagation(),text:'Play ↗'}):null)))})):el('div',{class:'card empty',text:'Your playlist is empty. Tap “+ Audio” and paste a link.'}));
+ return root}
+
+/* companies */
+const BIZ_START=['Business name registered and certificate kept safe','Tax ID (TIN) obtained','Business bank account opened and active','Business plan written (1–2 pages)','First paying customer','First month with recorded income','Monthly accounts kept'];
+function bizSheet(kind,it){
+ const isNew=!it;it=it||{co:CoSel,kind,title:'',due:'',note:'',date:todayS(),value:'',unit:''};
+ const F={ms:[{k:'title',label:'Milestone',type:'text',ph:'e.g. Register trademark'},{k:'due',label:'Target date (optional)',type:'date'},{k:'note',label:'Remark',type:'area'}],
+  up:[{k:'date',label:'Date',type:'date'},{k:'title',label:'What moved forward? (progress note)',type:'area',ph:'Meetings held, deals, challenges, decisions'}],
+  met:[{k:'title',label:'Number to track',type:'text',ph:'e.g. Farmers registered, Revenue this month (₦)'},{k:'value',label:'Current value',type:'text'},{k:'unit',label:'Unit (optional)',type:'text',ph:'farmers, ₦, tonnes'},{k:'date',label:'As at',type:'date'}]}[kind];
+ openSheet({title:(isNew?'New ':'Edit ')+{ms:'milestone',up:'progress note',met:'number'}[kind],data:{...it,value:String(it.value||'')},fields:F,
+  extra:()=>kind==='met'?el('div',{class:'note',text:'Enter only real figures. Update this number whenever it changes.'}):null,
+  onSave:async v=>{if(!(v.title||'').trim())return false;const o={co:it.co||CoSel,kind,title:v.title.trim(),due:v.due||'',note:v.note||'',date:v.date||todayS(),value:v.value||'',unit:v.unit||'',done:!!it.done,doneOn:it.doneOn||'',created:it.created||todayS()};await col('biz').doc(it.id||rid()).set(o)},
+  onDelete:it.id?()=>col('biz').doc(it.id).delete():null});}
+function vBiz(){
+ const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'My companies'}),el('div',{class:'sub',text:'Progress of each business'})),themeBtn()));
+ root.append(el('div',{class:'seg',style:'margin-bottom:10px'},...Object.entries(CO).map(([k,l])=>el('button',{type:'button',class:CoSel===k?'on':'',text:k==='crest'?'Crest Global':'Agric Innovation',onclick:()=>{CoSel=k;render()}}))));
+ root.append(el('div',{class:'sub',text:CO[CoSel]}));
+ const all=S.biz.filter(x=>x.co===CoSel),ms=all.filter(x=>x.kind==='ms').sort((a,b)=>(a.done-b.done)||(a.due||'9').localeCompare(b.due||'9')),mets=all.filter(x=>x.kind==='met').sort((a,b)=>a.title.localeCompare(b.title)),ups=all.filter(x=>x.kind==='up').sort((a,b)=>b.date.localeCompare(a.date));
+ const dn=ms.filter(x=>x.done).length;
+ root.append(el('div',{class:'card'},el('div',{class:'line'},el('span',{text:'Milestones completed'}),el('span',{text:dn+' of '+ms.length})),bar(ms.length?dn/ms.length*100:0)));
+ root.append(el('h2',{text:'Milestones'}),el('div',{class:'card'},...(ms.length?ms.map(x=>el('div',{class:'row'+(x.done?' done':''),onclick:()=>bizSheet('ms',x)},el('button',{class:'check',type:'button','aria-label':x.done?'Mark not done':'Mark done',text:x.done?'✓':'',onclick:e=>{e.stopPropagation();const{id,...o}=x;col('biz').doc(x.id).set({...o,done:!x.done,doneOn:x.done?'':todayS()})}}),el('div',{class:'grow'},el('div',{class:'title',text:x.title}),el('div',{class:'meta'},x.due?el('span',{text:'target '+fmtD(x.due)}):null,x.due&&x.due<todayS()&&!x.done?el('span',{class:'chip w',text:'overdue'}):null,x.done&&x.doneOn?el('span',{text:'done '+fmtD(x.doneOn)}):null)))):[el('div',{class:'empty',text:'No milestones yet.'})]),
+  el('div',{class:'acts'},el('button',{class:'btn p',type:'button',text:'+ Milestone',onclick:()=>bizSheet('ms')}),!ms.length?el('button',{class:'btn',type:'button',text:'Add starter milestones',onclick:async()=>{for(const t of BIZ_START)await col('biz').doc(rid()).set({co:CoSel,kind:'ms',title:t,due:'',note:'Example. Edit or delete.',date:todayS(),value:'',unit:'',done:false,doneOn:'',created:todayS()})}}):null)));
+ root.append(el('h2',{text:'Key numbers'}),el('div',{class:'card'},...(mets.length?mets.map(x=>el('div',{class:'row',onclick:()=>bizSheet('met',x)},el('div',{class:'grow'},el('div',{class:'title',text:x.title}),el('div',{class:'meta',text:'as at '+fmtD(x.date)})),el('b',{text:x.value+(x.unit?' '+x.unit:'')}))):[el('div',{class:'empty',text:'Track things like farmers registered, orders, revenue.'})]),el('div',{class:'acts'},el('button',{class:'btn p',type:'button',text:'+ Number',onclick:()=>bizSheet('met')}))));
+ root.append(el('h2',{text:'Progress notes'}),el('div',{class:'card'},...(ups.length?ups.slice(0,40).map(x=>el('div',{class:'row',onclick:()=>bizSheet('up',x)},el('div',{class:'grow'},el('div',{class:'meta',text:fmtD(x.date)}),el('div',{class:'title',text:x.title})))):[el('div',{class:'empty',text:'Write what moved forward each week.'})]),el('div',{class:'acts'},el('button',{class:'btn p',type:'button',text:'+ Progress note',onclick:()=>bizSheet('up')}))));
+ return root}
+
+function vWork(){const r=el('div',{});r.append(subNav(W,[['apps','Applications'],['cos','Companies'],['calls','Calls']],k=>W=k),W==='apps'?vApps():W==='cos'?vBiz():vCalls());return r}
+function vLife(){const r=el('div',{});r.append(subNav(Lf,[['journal','Journal'],['evang','Evangelism'],['books','Books'],['audio','Playlist']],k=>Lf=k),Lf==='journal'?vJournal():Lf==='evang'?vEvang():Lf==='books'?vBooks():vAudio());return r}
+function fabFor(){if(tab==='money')return['+ Money',()=>spendSheet()];
+ if(tab==='work')return W==='apps'?['+ Application',()=>appSheet()]:W==='cos'?['+ Milestone',()=>bizSheet('ms')]:['+ Contact',()=>personSheet()];
+ if(tab==='life')return Lf==='journal'?['+ Entry',()=>journalSheet()]:Lf==='evang'?['+ Outreach',()=>evangSheet()]:Lf==='books'?['+ Book',()=>bookSheet()]:['+ Audio',()=>audioSheet()];
+ if(tab==='review')return null;return['+ Plan',()=>planSheet()]}
 
 function monthShift(n){const d=new Date(M.y,M.m+n,1);M.y=d.getFullYear();M.m=d.getMonth();render()}
 function pledgeBlock(){
  const open=S.pledges.filter(p=>p.amount-(p.paid||0)>0),done=S.pledges.filter(p=>p.amount-(p.paid||0)<=0);
  const sum=d=>open.filter(p=>p.dir===d).reduce((a,p)=>a+p.amount-(p.paid||0),0);
  const row=p=>{const left=p.amount-(p.paid||0),late=p.due&&p.due<todayS()&&left>0;
-  return el('div',{class:'row',onclick:()=>pledgeSheet(p)},el('div',{class:'grow'},el('div',{class:'title',text:p.who}),el('div',{class:'meta'},el('span',{class:'chip'+(p.dir==='give'?' w':''),text:p.dir==='give'?'I owe':'owed to me'}),p.due?el('span',{text:'due '+fmtD(p.due)}):null,late?el('span',{class:'chip w',text:'overdue'}):null),bar((p.paid||0)/p.amount*100,p.dir==='give')),el('div',{style:'text-align:right'},el('b',{text:naira(left)}),el('div',{class:'meta',text:'of '+naira(p.amount)})))};
+  return el('div',{class:'row'+(left<=0?' done':''),onclick:()=>pledgeSheet(p)},el('button',{class:'check',type:'button','aria-label':left<=0?'Mark not settled':'Mark settled',text:left<=0?'✓':'',onclick:e=>{e.stopPropagation();const{id,...o}=p;col('pledges').doc(p.id).set(left<=0?{...o,paid:o.prev||0}:{...o,prev:o.paid||0,paid:o.amount}).catch(()=>{})}}),el('div',{class:'grow'},el('div',{class:'title',text:p.who}),el('div',{class:'meta'},el('span',{class:'chip'+(p.dir==='give'?' w':''),text:p.dir==='give'?'I owe':'owed to me'}),p.due?el('span',{text:'due '+fmtD(p.due)}):null,late?el('span',{class:'chip w',text:'overdue'}):null),bar((p.paid||0)/p.amount*100,p.dir==='give')),el('div',{style:'text-align:right'},el('b',{text:naira(left)}),el('div',{class:'meta',text:'of '+naira(p.amount)})))};
  const out=[el('h2',{text:'Pledges'})];
  if(S.pledges.length)out.push(el('div',{class:'tiles'},el('div',{class:'tile out'},el('small',{text:'I still owe (pledged)'}),el('b',{text:naira(sum('give'))})),el('div',{class:'tile in'},el('small',{text:'Still owed to me'}),el('b',{text:naira(sum('receive'))}))));
  out.push(el('div',{class:'card'},...(open.length?open.map(row):[el('div',{class:'empty',text:S.pledges.length?'All pledges settled.':'No pledges yet.'})]),el('div',{class:'acts'},el('button',{class:'btn p',type:'button',text:'+ Pledge',onclick:()=>pledgeSheet()}))));
- if(done.length)out.push(el('div',{class:'meta',text:done.length+' settled pledge'+(done.length>1?'s':'')+' (tap Edit by recording a new one; settled ones stay in your CSV export).'}));
+ if(done.length)out.push(el('div',{class:'meta',text:'Settled ('+done.length+')'}),el('div',{class:'card'},...done.map(row)));
  return out}
 function vMoney(){
  const root=el('div',{});root.append(el('div',{class:'top'},el('div',{},el('h1',{text:'Money'}),el('div',{class:'sub',text:'Where it comes from, where it goes'})),themeBtn()));
@@ -344,6 +566,8 @@ function vReview(){
  // money
  let inc=0,spent=0,saved=0,give=0;S.spend.forEach(s=>{if(s.date<a||s.date>b)return;const g=CATG[s.cat];if(g==='inc')inc+=s.amount;else if(g==='save')saved+=s.amount;else{spent+=s.amount;if(g==='give')give+=s.amount}});
  if(inc||spent||saved)root.append(el('h2',{text:'Money'}),el('div',{class:'card'},el('div',{class:'line'},el('span',{text:'In'}),el('span',{text:naira(inc)})),el('div',{class:'line'},el('span',{text:'Spent'}),el('span',{text:naira(spent)})),el('div',{class:'line'},el('span',{text:'Saved'}),el('span',{text:naira(saved)})),el('div',{class:'line'},el('span',{text:'Given (tithe, offering, donations, support)'}),el('span',{text:naira(give)}))));
+ {let calls=0,reached=0,dec=0,bk=0,ms=0;S.people.forEach(p=>(p.log||[]).forEach(x=>{if(x.d>=a&&x.d<=b)calls++}));S.evang.forEach(x=>{if(x.date>=a&&x.date<=b){reached+=x.count||1;if(x.resp==='decision')dec+=x.count||1}});S.books.forEach(x=>{if(x.finished&&x.finished>=a&&x.finished<=b)bk++});S.biz.forEach(x=>{if(x.kind==='ms'&&x.doneOn&&x.doneOn>=a&&x.doneOn<=b)ms++});
+  if(calls||reached||bk||ms)root.append(el('h2',{text:'Highlights'}),el('div',{class:'card'},el('div',{class:'line'},el('span',{text:'Calls made'}),el('span',{text:String(calls)})),el('div',{class:'line'},el('span',{text:'People reached (evangelism)'}),el('span',{text:reached+(dec?' · '+dec+' decisions':'')})),el('div',{class:'line'},el('span',{text:'Books finished'}),el('span',{text:String(bk)})),el('div',{class:'line'},el('span',{text:'Company milestones completed'}),el('span',{text:String(ms)}))))}
  // export
  root.append(el('h2',{text:'Download my data (CSV)'}),el('div',{class:'card'},el('div',{class:'seg'},...EXPORTS.map(([l,n,f])=>el('button',{type:'button',text:l,onclick:()=>doExport(n,f)}))),exportMsg?el('div',{class:'note',text:exportMsg}):null,el('div',{class:'meta',text:'Opens in Excel or Google Sheets.'})));
  // supabase
@@ -352,7 +576,7 @@ function vReview(){
   sbUser?el('div',{class:'line'},el('span',{text:'Signed in'}),el('span',{text:sbUser.email||''})):el('div',{class:'sub',text:'Your data lives on this device. Sign in to also keep a private copy in your Supabase and share it between your phone and computer.'}),
   el('div',{class:'acts'},sbUser?[el('button',{class:'btn p',type:'button',disabled:sbBusy,text:'Sync now',onclick:()=>syncNow(false)}),el('button',{class:'btn',type:'button',text:'Sign out',onclick:sbOut})]:[el('button',{class:'btn p',type:'button',text:'Sign in to sync',onclick:sbSignIn})],el('button',{class:'btn',type:'button',text:'Import CSV',onclick:()=>fi.click()}),fi),
   sbMsg?el('div',{class:'note',text:sbMsg}):null,lsGet('il_last')?el('div',{class:'meta',text:'Last sync: '+new Date(lsGet('il_last')).toLocaleString()}):null,
-  el('div',{class:'meta',text:'Import accepts the Plans, Money and Pledges CSV files from this app. Existing items are not duplicated.'})));
+  el('div',{class:'meta',text:'Import accepts the Plans, Money, Pledges, Applications and Journal CSV files from this app. Existing items are not duplicated.'})));
  // reflection
  const cur=S.notes[pk]||{text:''};
  const ta=el('textarea',{placeholder:'What went well? What did not? What difference did I make? What will I change?',value:cur.text||''});
@@ -379,11 +603,10 @@ async function seed(){
 function render(){
  if(!db){return}
  const scroll=window.scrollY;$app.replaceChildren();
- const v=tab==='today'?vToday():tab==='plans'?vPlans():tab==='money'?vMoney():vReview();
+ const v=tab==='today'?vToday():tab==='plans'?vPlans():tab==='work'?vWork():tab==='life'?vLife():tab==='money'?vMoney():vReview();
  $app.append(v);
- if(tab==='money')$app.append(el('button',{class:'fab',text:'+ Money',onclick:()=>spendSheet()}));
- else if(tab!=='review')$app.append(el('button',{class:'fab',text:'+ Plan',onclick:()=>planSheet()}));
- $app.append(el('div',{class:'tabs'},el('div',{},...[['today','Today'],['plans','Plans'],['money','Money'],['review','Review']].map(([k,l])=>el('button',{class:tab===k?'on':'',text:l,onclick:()=>{tab=k;render();window.scrollTo(0,0)}})))));
+ const fb=fabFor();if(fb)$app.append(el('button',{class:'fab',text:fb[0],onclick:fb[1]}));
+ $app.append(el('div',{class:'tabs'},el('div',{},...[['today','Today'],['plans','Plans'],['money','Money'],['work','Work'],['life','Life'],['review','Review']].map(([k,l])=>el('button',{class:tab===k?'on':'',text:l,onclick:()=>{tab=k;render();window.scrollTo(0,0)}})))));
  window.scrollTo(0,scroll)}
 
 function msg(t){$app.replaceChildren(el('div',{class:'card empty'},el('h1',{text:'Impact Ledger'}),el('p',{text:t})))}
@@ -395,11 +618,18 @@ function put(name,id,o){(store[name]=store[name]||{})[id]=o;persist();(subs[name
 db={collection(path){const name=path.split('/').pop();return{onSnapshot(next){(subs[name]=subs[name]||[]).push(next);fire(name,next)},doc(id){return{set:async o=>put(name,id,{...o,_u:Date.now()}),delete:async()=>put(name,id,{_del:true,_u:Date.now()})}}}}};
 uid='me';
 dl={save:async({filename,data})=>{const u=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}};
-const handle=(name,fn,quiet)=>col(name).onSnapshot(s=>{fn(s.docs.map(d=>({id:d.id,...d.data()})));if(quiet&&loaded>=4)return;loaded++;render()});
+const handle=(name,fn,quiet)=>col(name).onSnapshot(s=>{fn(s.docs.map(d=>({id:d.id,...d.data()})));if(quiet&&loaded>=11)return;loaded++;render()});
 handle('plans',a=>S.plans=a);
 handle('notes',a=>{S.notes={};a.forEach(n=>S.notes[n.id]=n)},true);
 handle('spend',a=>S.spend=a);
 handle('pledges',a=>S.pledges=a);
+handle('apps',a=>S.apps=a);
+handle('journal',a=>S.journal=a);
+handle('people',a=>S.people=a);
+handle('evang',a=>S.evang=a);
+handle('books',a=>S.books=a);
+handle('audio',a=>S.audio=a);
+handle('biz',a=>S.biz=a);
 render();
 if(Object.keys(localStorage||{}).some(k=>k.startsWith('sb-')))sbClient().then(()=>{render();if(sbUser)syncNow(true)}).catch(()=>{});
 })();
